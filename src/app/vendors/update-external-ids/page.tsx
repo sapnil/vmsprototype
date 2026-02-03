@@ -349,9 +349,11 @@ export default function UpdateExternalIdsPage() {
                                       <p className="font-semibold">
                                         {site.legalName}
                                       </p>
-                                      <p className="text-sm text-muted-foreground">
-                                        {site.gstNumber}
-                                      </p>
+                                      <div className="text-sm text-muted-foreground">
+                                        <span>{site.gstNumber}</span>
+                                        <span className="mx-2">·</span>
+                                        <span>{site.natureOfExpense}</span>
+                                      </div>
                                     </div>
                                     <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
                                       <FormField
