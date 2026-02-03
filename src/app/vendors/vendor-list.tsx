@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Eye, Pencil, Trash2, ChevronDown, ChevronRight, PlusCircle } from 'lucide-react';
+import { MoreHorizontal, Eye, Pencil, ChevronDown, ChevronRight, PlusCircle, XCircle } from 'lucide-react';
 import { mockVendors, type Vendor, type Site } from '@/lib/vendors';
 import { cn } from '@/lib/utils';
 import React, { Fragment, useState } from 'react';
@@ -97,8 +97,8 @@ function SiteList({ sites }: { sites: Site[] }) {
                                             Edit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-destructive">
-                                            <Trash2 className="mr-2 h-4 w-4" />
-                                            Delete
+                                            <XCircle className="mr-2 h-4 w-4" />
+                                            Deactivate Site
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -179,13 +179,9 @@ export function VendorList() {
                                                 </DropdownMenuTrigger>
                                                 <DropdownMenuContent align="end">
                                                     <DropdownMenuLabel>Vendor Actions</DropdownMenuLabel>
-                                                    <DropdownMenuItem>
-                                                        <Pencil className="mr-2 h-4 w-4" />
-                                                        Edit Vendor
-                                                    </DropdownMenuItem>
                                                     <DropdownMenuItem className="text-destructive">
-                                                        <Trash2 className="mr-2 h-4 w-4" />
-                                                        Delete Vendor
+                                                        <XCircle className="mr-2 h-4 w-4" />
+                                                        Deactivate Vendor
                                                     </DropdownMenuItem>
                                                 </DropdownMenuContent>
                                             </DropdownMenu>
