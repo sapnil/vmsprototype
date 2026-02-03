@@ -29,6 +29,7 @@ import { mockVendors, type Vendor, type Site } from '@/lib/vendors';
 import { cn } from '@/lib/utils';
 import React, { Fragment, useState } from 'react';
 import Link from 'next/link';
+import { useSearchParams } from 'next/navigation';
 
 const statusColors = {
     Approved: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
@@ -85,9 +86,11 @@ function SiteList({ sites }: { sites: Site[] }) {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuLabel>Site Actions</DropdownMenuLabel>
-                                        <DropdownMenuItem>
-                                            <Eye className="mr-2 h-4 w-4" />
-                                            View
+                                        <DropdownMenuItem asChild>
+                                            <Link href={`/vendors/sites/${site.id}`}>
+                                                <Eye className="mr-2 h-4 w-4" />
+                                                View
+                                            </Link>
                                         </DropdownMenuItem>
                                         <DropdownMenuItem>
                                             <Pencil className="mr-2 h-4 w-4" />
@@ -110,19 +113,17 @@ function SiteList({ sites }: { sites: Site[] }) {
 
 export function VendorList() {
     const vendors = mockVendors;
-    const [openVendorId, setOpenVendorId] = useState<string | null>(null);
+    const searchParams = useSearchParams();
+    const [openVendorId, setOpenVendorId] = useState<string | null>(() => searchParams.get('openVendorId'));
+
+    React.useEffect(() => {
+        const openVendorParam = searchParams.get('openVendorId');
+        setOpenVendorId(openVendorParam);
+    }, [searchParams]);
 
     const toggleVendor = (vendorId: string) => {
         setOpenVendorId(prev => (prev === vendorId ? null : vendorId));
     }
-
-    // Automatically open the first vendor with multiple sites for demo purposes
-    React.useEffect(() => {
-        const firstMultiSiteVendor = vendors.find(v => v.sites.length > 1);
-        if (firstMultiSiteVendor) {
-            setOpenVendorId(firstMultiSiteVendor.id);
-        }
-    }, [vendors]);
 
     return (
         <Card>
