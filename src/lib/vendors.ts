@@ -1,3 +1,4 @@
+
 export type Site = {
   id: string;
   gstNumber: string;
@@ -93,8 +94,6 @@ export const mockVendors: Vendor[] = [
         natureOfExpense: 'Raw Material',
         paymentFrequency: 'Per Invoice',
         registrationCertificate: 'quantum_solutions_reg.pdf',
-        oracleVendorId: 'ORA-VEN-1002',
-        oracleSiteId: 'ORA-SITE-2002',
       },
     ],
   },
@@ -214,8 +213,6 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
-        oracleVendorId: 'ORA-VEN-1005',
-        oracleSiteId: 'ORA-SITE-2006',
       },
     ],
   },
@@ -245,8 +242,6 @@ export const mockVendors: Vendor[] = [
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
         registrationCertificate: 'creative_minds_reg.pdf',
-        oracleVendorId: 'ORA-VEN-1006',
-        oracleSiteId: 'ORA-SITE-2007',
       },
     ],
   },
