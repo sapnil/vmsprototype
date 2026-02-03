@@ -16,6 +16,9 @@ export type Site = {
   natureOfBusiness: string;
   natureOfExpense: string;
   paymentFrequency: string;
+  registrationCertificate?: string;
+  panCard?: string;
+  addressProof?: string;
 };
 
 export type Vendor = {
@@ -49,6 +52,9 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Monthly',
+        registrationCertificate: 'innovate_reg_cert.pdf',
+        panCard: 'innovate_pan.pdf',
+        addressProof: 'innovate_address_proof.pdf',
       },
     ],
   },
@@ -76,6 +82,7 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Manufacturer',
         natureOfExpense: 'Raw Material',
         paymentFrequency: 'Per Invoice',
+        registrationCertificate: 'quantum_solutions_reg.pdf',
       },
     ],
   },
@@ -102,6 +109,8 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Quarterly',
+        panCard: 'greenscape_pan.pdf',
+        addressProof: 'greenscape_address.pdf',
       },
     ],
   },
@@ -128,6 +137,8 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Trader',
         natureOfExpense: 'Capital Goods',
         paymentFrequency: 'Annually',
+        registrationCertificate: 'techgenix_reg.pdf',
+        panCard: 'techgenix_pan.pdf',
       },
     ],
   },
@@ -155,6 +166,9 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Monthly',
+        registrationCertificate: 'apex_chennai_reg.pdf',
+        panCard: 'apex_logistics_pan.pdf',
+        addressProof: 'apex_chennai_address.pdf',
       },
       {
         id: 'SITE006',
@@ -201,6 +215,7 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
+        registrationCertificate: 'creative_minds_reg.pdf',
       },
     ],
   },

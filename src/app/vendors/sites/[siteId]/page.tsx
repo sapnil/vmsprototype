@@ -22,6 +22,8 @@ import {
   FileText,
   Clock,
   Banknote,
+  Download,
+  ShieldCheck,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -54,6 +56,46 @@ const InfoItem = ({
     </div>
   </div>
 );
+
+const DocumentItem = ({
+  label,
+  fileName,
+}: {
+  label: string;
+  fileName?: string;
+}) => {
+  const isAvailable = !!fileName;
+
+  return (
+    <div className={cn(
+      "flex items-center justify-between gap-4 rounded-md border p-3",
+      isAvailable ? "bg-background shadow-sm" : "border-dashed bg-muted/50"
+    )}>
+      <div className="flex items-center gap-3 overflow-hidden">
+        <FileText className={cn("h-6 w-6 flex-shrink-0", isAvailable ? "text-primary" : "text-muted-foreground/50")} />
+        <div className="overflow-hidden">
+          <p className={cn("font-medium", !isAvailable && "text-muted-foreground")}>{label}</p>
+          <p className="truncate text-sm text-muted-foreground">
+            {isAvailable ? fileName : "Not uploaded"}
+          </p>
+        </div>
+      </div>
+      {isAvailable ? (
+        <Button asChild variant="outline" size="sm" className="flex-shrink-0">
+          <a href="#" download={fileName}>
+            <Download className="mr-2 h-4 w-4" />
+            Download
+          </a>
+        </Button>
+      ) : (
+        <Button variant="outline" size="sm" className="flex-shrink-0" disabled>
+          <Download className="mr-2 h-4 w-4" />
+          Download
+        </Button>
+      )}
+    </div>
+  );
+};
 
 export default function SiteDetailsPage({
   params,
@@ -214,6 +256,23 @@ export default function SiteDetailsPage({
             label="Payment Frequency"
             value={site.paymentFrequency}
           />
+        </CardContent>
+      </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <ShieldCheck className="text-primary" />
+            Uploaded Documents
+          </CardTitle>
+           <CardDescription>
+            Documents submitted during the registration process.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <DocumentItem label="Registration Certificate" fileName={site.registrationCertificate} />
+          <DocumentItem label="PAN Card Copy" fileName={site.panCard} />
+          <DocumentItem label="Address Proof" fileName={site.addressProof} />
         </CardContent>
       </Card>
     </main>
