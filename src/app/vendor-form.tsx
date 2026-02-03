@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useState } from 'react';
+import React, { useState } from 'react';
 import {
   Building2,
   Landmark,
@@ -15,6 +15,8 @@ import {
   LoaderCircle,
   Sparkles,
   ArrowRight,
+  ArrowLeft,
+  Check,
 } from 'lucide-react';
 
 import { Button } from '@/components/ui/button';
@@ -45,6 +47,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { handleGstAutofill } from '@/app/actions';
+import { cn } from '@/lib/utils';
 
 const formSchema = z.object({
   gstNumber: z.string().length(15, 'GST Number must be 15 characters.'),
@@ -78,6 +81,44 @@ const formSchema = z.object({
 });
 
 type VendorFormValues = z.infer<typeof formSchema>;
+
+const steps = [
+  {
+    id: 'Contact & Identity',
+    icon: Building2,
+    fields: [
+      'gstNumber',
+      'tradeName',
+      'legalName',
+      'panNumber',
+      'registrationDate',
+      'address',
+      'contactPerson',
+      'contactEmail',
+      'contactPhone',
+    ],
+  },
+  {
+    id: 'Bank Details',
+    icon: Landmark,
+    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName'],
+  },
+  {
+    id: 'Business Attributes',
+    icon: FileText,
+    fields: ['natureOfBusiness', 'natureOfExpense', 'paymentFrequency'],
+  },
+  {
+    id: 'References',
+    icon: Users,
+    fields: ['referenceName', 'referenceContact', 'backgroundCheckNotes'],
+  },
+  {
+    id: 'Document Upload',
+    icon: ShieldCheck,
+    fields: ['registrationCertificate', 'panCard', 'addressProof'],
+  },
+];
 
 const DocumentUploadItem = ({
   field,
@@ -123,6 +164,7 @@ const DocumentUploadItem = ({
 };
 
 export function VendorForm() {
+  const [currentStep, setCurrentStep] = useState(0);
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
@@ -194,451 +236,531 @@ export function VendorForm() {
       className: 'bg-accent text-accent-foreground border-accent',
     });
     form.reset();
+    setCurrentStep(0);
+  };
+  
+  const handleNext = async () => {
+    const fields = steps[currentStep].fields;
+    const output = await form.trigger(fields as (keyof VendorFormValues)[], {
+      shouldFocus: true,
+    });
+
+    if (!output) return;
+
+    if (currentStep < steps.length - 1) {
+      setCurrentStep((step) => step + 1);
+    }
+  };
+
+  const handlePrevious = () => {
+    if (currentStep > 0) {
+      setCurrentStep((step) => step - 1);
+    }
   };
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Building2 className="text-primary" />
-              Contact & Identity Details
-            </CardTitle>
-            <CardDescription>
-              Start by entering the GST number to autofill details.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex flex-col items-end gap-2 sm:flex-row">
+        <div className="flex items-center">
+            {steps.map((step, index) => (
+                <React.Fragment key={step.id}>
+                    <div className="flex flex-col items-center text-center" style={{ minWidth: '120px' }}>
+                        <div
+                            className={cn(
+                                "flex h-12 w-12 items-center justify-center rounded-full border-2 font-bold transition-all",
+                                currentStep > index ? "border-primary bg-primary text-primary-foreground" :
+                                currentStep === index ? "border-primary text-primary" : "border-border text-muted-foreground",
+                            )}
+                        >
+                            {currentStep > index ? <Check className="h-6 w-6" /> : <step.icon className="h-6 w-6" />}
+                        </div>
+                        <p className={cn(
+                            "mt-2 text-xs font-semibold sm:text-sm",
+                            currentStep >= index ? "text-foreground" : "text-muted-foreground"
+                        )}>{step.id}</p>
+                    </div>
+                    {index < steps.length - 1 && (
+                        <div className={cn("flex-1 border-t-2 mx-4 transition-all", currentStep > index ? "border-primary" : "border-border")} />
+                    )}
+                </React.Fragment>
+            ))}
+        </div>
+
+        {currentStep === 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Building2 className="text-primary" />
+                Contact & Identity Details
+              </CardTitle>
+              <CardDescription>
+                Start by entering the GST number to autofill details.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex flex-col items-end gap-2 sm:flex-row">
+                <FormField
+                  control={form.control}
+                  name="gstNumber"
+                  render={({ field }) => (
+                    <FormItem className="w-full">
+                      <FormLabel>GST Number</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. 29ABCDE1234F1Z5" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button
+                  type="button"
+                  onClick={onGstAutofill}
+                  disabled={isAutofilling}
+                  className="w-full flex-shrink-0 sm:w-auto"
+                >
+                  {isAutofilling ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Sparkles />
+                  )}
+                  Autofill with AI
+                </Button>
+              </div>
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="tradeName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Trade Name / Business Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your business name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="legalName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Legal Name of Business</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Prefilled by AI"
+                          readOnly
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="panNumber"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PAN</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Prefilled by AI"
+                          readOnly
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="registrationDate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Date of Registration</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Prefilled by AI"
+                          readOnly
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <FormField
                 control={form.control}
-                name="gstNumber"
+                name="address"
                 render={({ field }) => (
-                  <FormItem className="w-full">
-                    <FormLabel>GST Number</FormLabel>
+                  <FormItem>
+                    <FormLabel>Registered Address</FormLabel>
                     <FormControl>
-                      <Input placeholder="e.g. 29ABCDE1234F1Z5" {...field} />
+                      <Textarea
+                        placeholder="Prefilled by AI"
+                        readOnly
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="contactPerson"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Person</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Jane Doe" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contactEmail"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Email</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="email"
+                          placeholder="jane.doe@example.com"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="contactPhone"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Contact Phone</FormLabel>
+                      <FormControl>
+                        <Input type="tel" placeholder="+91 98765 43210" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 1 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Landmark className="text-primary" />
+                Bank Details
+              </CardTitle>
+              <CardDescription>
+                Provide your bank account details for payments.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+              <FormField
+                control={form.control}
+                name="bankName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Bank Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. State Bank of India" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="accountNumber"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Account Number</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter your account number" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="ifscCode"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>IFSC Code</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. SBIN0001234" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="branchName"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Branch Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Main Branch, Delhi" {...field} />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 2 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <FileText className="text-primary" />
+                Business Attributes
+              </CardTitle>
+              <CardDescription>
+                Help us understand your business better.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-3">
+              <FormField
+                control={form.control}
+                name="natureOfBusiness"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nature of Business</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="manufacturer">Manufacturer</SelectItem>
+                        <SelectItem value="trader">Trader</SelectItem>
+                        <SelectItem value="service_provider">
+                          Service Provider
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="natureOfExpense"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Nature of Expense</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="raw_material">Raw Material</SelectItem>
+                        <SelectItem value="services">Services</SelectItem>
+                        <SelectItem value="capital_goods">
+                          Capital Goods
+                        </SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="paymentFrequency"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Payment Frequency</FormLabel>
+                    <Select
+                      onValueChange={field.onChange}
+                      defaultValue={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder="Select..." />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="monthly">Monthly</SelectItem>
+                        <SelectItem value="quarterly">Quarterly</SelectItem>
+                        <SelectItem value="annually">Annually</SelectItem>
+                        <SelectItem value="per_invoice">Per Invoice</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 3 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Users className="text-primary" />
+                Reference & Background Checks
+              </CardTitle>
+              <CardDescription>
+                Optional: Provide references and background check details.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                <FormField
+                  control={form.control}
+                  name="referenceName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reference Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. John Smith" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="referenceContact"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Reference Contact</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Email or phone number"
+                          {...field}
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+              <FormField
+                control={form.control}
+                name="backgroundCheckNotes"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Background Check Notes</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Notes on background checks performed..."
+                        {...field}
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {currentStep === 4 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <ShieldCheck className="text-primary" />
+                Document Upload
+              </CardTitle>
+              <CardDescription>
+                Upload required business documents.
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="registrationCertificate"
+                render={({ field }) => (
+                  <DocumentUploadItem
+                    field={field}
+                    label="Registration Certificate"
+                  />
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="panCard"
+                render={({ field }) => (
+                  <DocumentUploadItem field={field} label="PAN Card Copy" />
+                )}
+              />
+              <FormField
+                control={form.control}
+                name="addressProof"
+                render={({ field }) => (
+                  <DocumentUploadItem field={field} label="Address Proof" />
+                )}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        <div className="flex justify-between">
+          <div>
+            {currentStep > 0 && (
               <Button
                 type="button"
-                onClick={onGstAutofill}
-                disabled={isAutofilling}
-                className="w-full flex-shrink-0 sm:w-auto"
+                onClick={handlePrevious}
+                variant="outline"
               >
-                {isAutofilling ? (
+                <ArrowLeft />
+                Previous
+              </Button>
+            )}
+          </div>
+          <div className="flex gap-4">
+            {currentStep < steps.length - 1 && (
+              <Button type="button" onClick={handleNext}>
+                Next
+                <ArrowRight />
+              </Button>
+            )}
+            {currentStep === steps.length - 1 && (
+              <Button type="submit" size="lg" disabled={isSubmitting}>
+                {isSubmitting ? (
                   <LoaderCircle className="animate-spin" />
                 ) : (
-                  <Sparkles />
+                  <>
+                  Submit for Approval
+                  <ArrowRight />
+                  </>
                 )}
-                Autofill with AI
               </Button>
-            </div>
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="tradeName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Trade Name / Business Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your business name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="legalName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Legal Name of Business</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Prefilled by AI"
-                        readOnly
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="panNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>PAN</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Prefilled by AI"
-                        readOnly
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="registrationDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Date of Registration</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Prefilled by AI"
-                        readOnly
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="address"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Registered Address</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Prefilled by AI"
-                      readOnly
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="contactPerson"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Person</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Jane Doe" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="contactEmail"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Email</FormLabel>
-                    <FormControl>
-                      <Input
-                        type="email"
-                        placeholder="jane.doe@example.com"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="contactPhone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Contact Phone</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="+91 98765 43210" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Landmark className="text-primary" />
-              Bank Details
-            </CardTitle>
-            <CardDescription>
-              Provide your bank account details for payments.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
-            <FormField
-              control={form.control}
-              name="bankName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Bank Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. State Bank of India" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="accountNumber"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Account Number</FormLabel>
-                  <FormControl>
-                    <Input placeholder="Enter your account number" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="ifscCode"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>IFSC Code</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. SBIN0001234" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="branchName"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Branch Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g. Main Branch, Delhi" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <FileText className="text-primary" />
-              Business Attributes
-            </CardTitle>
-            <CardDescription>
-              Help us understand your business better.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-3">
-            <FormField
-              control={form.control}
-              name="natureOfBusiness"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nature of Business</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="manufacturer">Manufacturer</SelectItem>
-                      <SelectItem value="trader">Trader</SelectItem>
-                      <SelectItem value="service_provider">
-                        Service Provider
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="natureOfExpense"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Nature of Expense</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="raw_material">Raw Material</SelectItem>
-                      <SelectItem value="services">Services</SelectItem>
-                      <SelectItem value="capital_goods">
-                        Capital Goods
-                      </SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="paymentFrequency"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Payment Frequency</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select..." />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      <SelectItem value="monthly">Monthly</SelectItem>
-                      <SelectItem value="quarterly">Quarterly</SelectItem>
-                      <SelectItem value="annually">Annually</SelectItem>
-                      <SelectItem value="per_invoice">Per Invoice</SelectItem>
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Users className="text-primary" />
-              Reference & Background Checks
-            </CardTitle>
-            <CardDescription>
-              Optional: Provide references and background check details.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="referenceName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reference Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. John Smith" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="referenceContact"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Reference Contact</FormLabel>
-                    <FormControl>
-                      <Input
-                        placeholder="Email or phone number"
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </div>
-            <FormField
-              control={form.control}
-              name="backgroundCheckNotes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Background Check Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Notes on background checks performed..."
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ShieldCheck className="text-primary" />
-              Document Upload
-            </CardTitle>
-            <CardDescription>
-              Upload required business documents.
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <FormField
-              control={form.control}
-              name="registrationCertificate"
-              render={({ field }) => (
-                <DocumentUploadItem
-                  field={field}
-                  label="Registration Certificate"
-                />
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="panCard"
-              render={({ field }) => (
-                <DocumentUploadItem field={field} label="PAN Card Copy" />
-              )}
-            />
-            <FormField
-              control={form.control}
-              name="addressProof"
-              render={({ field }) => (
-                <DocumentUploadItem field={field} label="Address Proof" />
-              )}
-            />
-          </CardContent>
-        </Card>
-
-        <div className="flex justify-end">
-          <Button type="submit" size="lg" disabled={isSubmitting}>
-            {isSubmitting ? (
-              <LoaderCircle className="animate-spin" />
-            ) : (
-              <ArrowRight />
             )}
-            Submit for Approval
-          </Button>
+          </div>
         </div>
       </form>
     </Form>
   );
 }
+
