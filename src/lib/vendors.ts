@@ -124,8 +124,6 @@ export const mockVendors: Vendor[] = [
         paymentFrequency: 'Quarterly',
         panCard: 'greenscape_pan.pdf',
         addressProof: 'greenscape_address.pdf',
-        oracleVendorId: 'ORA-VEN-1003',
-        oracleSiteId: 'ORA-SITE-2003',
       },
     ],
   },
