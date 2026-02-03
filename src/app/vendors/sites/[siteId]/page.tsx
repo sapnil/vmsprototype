@@ -24,6 +24,7 @@ import {
   Banknote,
   Download,
   ShieldCheck,
+  Database,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -182,6 +183,8 @@ export default function SiteDetailsPage({
               label="Official Registration Date"
               value={site.registrationDate}
             />
+            {site.oracleVendorId && <InfoItem icon={Database} label="Oracle Vendor ID" value={site.oracleVendorId} />}
+            {site.oracleSiteId && <InfoItem icon={Database} label="Oracle Site ID" value={site.oracleSiteId} />}
           </div>
         </CardContent>
       </Card>

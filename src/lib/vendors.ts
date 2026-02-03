@@ -20,6 +20,8 @@ export type Site = {
   registrationCertificate?: string;
   panCard?: string;
   addressProof?: string;
+  oracleVendorId?: string;
+  oracleSiteId?: string;
 };
 
 export type Vendor = {
@@ -59,6 +61,8 @@ export const mockVendors: Vendor[] = [
         registrationCertificate: 'innovate_reg_cert.pdf',
         panCard: 'innovate_pan.pdf',
         addressProof: 'innovate_address_proof.pdf',
+        oracleVendorId: 'ORA-VEN-1001',
+        oracleSiteId: 'ORA-SITE-2001',
       },
     ],
   },
@@ -89,6 +93,8 @@ export const mockVendors: Vendor[] = [
         natureOfExpense: 'Raw Material',
         paymentFrequency: 'Per Invoice',
         registrationCertificate: 'quantum_solutions_reg.pdf',
+        oracleVendorId: 'ORA-VEN-1002',
+        oracleSiteId: 'ORA-SITE-2002',
       },
     ],
   },
@@ -119,6 +125,8 @@ export const mockVendors: Vendor[] = [
         paymentFrequency: 'Quarterly',
         panCard: 'greenscape_pan.pdf',
         addressProof: 'greenscape_address.pdf',
+        oracleVendorId: 'ORA-VEN-1003',
+        oracleSiteId: 'ORA-SITE-2003',
       },
     ],
   },
@@ -149,6 +157,8 @@ export const mockVendors: Vendor[] = [
         paymentFrequency: 'Annually',
         registrationCertificate: 'techgenix_reg.pdf',
         panCard: 'techgenix_pan.pdf',
+        oracleVendorId: 'ORA-VEN-1004',
+        oracleSiteId: 'ORA-SITE-2004',
       },
     ],
   },
@@ -181,6 +191,8 @@ export const mockVendors: Vendor[] = [
         registrationCertificate: 'apex_chennai_reg.pdf',
         panCard: 'apex_logistics_pan.pdf',
         addressProof: 'apex_chennai_address.pdf',
+        oracleVendorId: 'ORA-VEN-1005',
+        oracleSiteId: 'ORA-SITE-2005',
       },
       {
         id: 'SITE006',
@@ -202,6 +214,8 @@ export const mockVendors: Vendor[] = [
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
+        oracleVendorId: 'ORA-VEN-1005',
+        oracleSiteId: 'ORA-SITE-2006',
       },
     ],
   },
@@ -231,6 +245,8 @@ export const mockVendors: Vendor[] = [
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
         registrationCertificate: 'creative_minds_reg.pdf',
+        oracleVendorId: 'ORA-VEN-1006',
+        oracleSiteId: 'ORA-SITE-2007',
       },
     ],
   },
