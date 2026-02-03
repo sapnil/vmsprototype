@@ -1,6 +1,13 @@
 import type { Metadata } from 'next';
 import './globals.css';
 import { Toaster } from '@/components/ui/toaster';
+import { AppSidebar } from '@/components/header';
+import {
+  SidebarProvider,
+  SidebarInset,
+  SidebarTrigger,
+} from '@/components/ui/sidebar';
+import { VendorLinkLogo } from '@/components/icons';
 
 export const metadata: Metadata = {
   title: 'VendorLink',
@@ -13,7 +20,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" suppressHydrationWarning>
       <head>
         <link rel="preconnect" href="https://fonts.googleapis.com" />
         <link
@@ -27,7 +34,21 @@ export default function RootLayout({
         />
       </head>
       <body className="font-body antialiased">
-        {children}
+        <SidebarProvider>
+          <AppSidebar />
+          <SidebarInset>
+            <header className="sticky top-0 z-10 flex h-14 items-center justify-between gap-4 border-b bg-background px-4 sm:h-16 sm:px-6 md:hidden">
+              <div className="flex items-center gap-2">
+                <VendorLinkLogo className="size-6 text-primary" />
+                <h1 className="font-headline text-lg font-bold tracking-tight">
+                  VendorLink
+                </h1>
+              </div>
+              <SidebarTrigger />
+            </header>
+            {children}
+          </SidebarInset>
+        </SidebarProvider>
         <Toaster />
       </body>
     </html>
