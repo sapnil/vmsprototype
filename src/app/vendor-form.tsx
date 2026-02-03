@@ -48,6 +48,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { handleGstAutofill } from '@/app/actions';
 import { cn } from '@/lib/utils';
+import { mockVendors } from '@/lib/vendors';
 
 const formSchema = z.object({
   gstNumber: z.string().length(15, 'GST Number must be 15 characters.'),
@@ -163,19 +164,24 @@ const DocumentUploadItem = ({
   );
 };
 
-export function VendorForm() {
+export function VendorForm({ vendorId }: { vendorId?: string }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  const isNewSiteFlow = !!vendorId;
+  const vendor = isNewSiteFlow
+    ? mockVendors.find((v) => v.id === vendorId)
+    : null;
+
   const form = useForm<VendorFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
       gstNumber: '',
-      tradeName: '',
+      tradeName: vendor?.tradeName || '',
       legalName: '',
-      panNumber: '',
+      panNumber: vendor?.panNumber || '',
       registrationDate: '',
       address: '',
       contactPerson: '',
@@ -334,7 +340,11 @@ export function VendorForm() {
                     <FormItem>
                       <FormLabel>Trade Name / Business Name</FormLabel>
                       <FormControl>
-                        <Input placeholder="Your business name" {...field} />
+                        <Input
+                          placeholder="Your business name"
+                          {...field}
+                          readOnly={isNewSiteFlow}
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -763,4 +773,3 @@ export function VendorForm() {
     </Form>
   );
 }
-
