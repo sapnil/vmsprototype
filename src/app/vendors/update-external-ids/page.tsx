@@ -130,7 +130,7 @@ export default function UpdateExternalIdsPage() {
     // 2. Mock some unmapped Excel records
     const unmappedExcelRecords: ExcelRecord[] = [
       {
-        PAN_Number: 'CCDE1234F',
+        PAN_Number: 'CCDE1234F', // This PAN matches GreenScape Services
         GST_Number: '36CCDE1234F1Z5',
         Bank_Account_Number: '9876543210',
         Oracle_Vendor_ID: 'EXL-VEN-901',
@@ -138,7 +138,7 @@ export default function UpdateExternalIdsPage() {
         rowNumber: 5,
       },
       {
-        PAN_Number: 'XYZ-PAN-404',
+        PAN_Number: 'XYZ-PAN-404', // This PAN does not match any VMS record needing update
         GST_Number: '00NOTFOUND00000F0Z0',
         Bank_Account_Number: '0000000000',
         Oracle_Vendor_ID: 'EXL-VEN-404',
@@ -147,7 +147,22 @@ export default function UpdateExternalIdsPage() {
       },
     ];
 
-    // 3. Group records by PAN
+    // 3. Find common PANs
+    const vmsPans = new Set(vmsRecordsToUpdate.map((site) => site.vendorPan));
+    const excelPans = new Set(
+      unmappedExcelRecords.map((record) => record.PAN_Number)
+    );
+    const commonPans = new Set([...vmsPans].filter((pan) => excelPans.has(pan)));
+
+    // 4. Filter both lists to only include records with common PANs
+    const filteredVmsRecords = vmsRecordsToUpdate.filter((site) =>
+      commonPans.has(site.vendorPan)
+    );
+    const filteredExcelRecords = unmappedExcelRecords.filter((record) =>
+      commonPans.has(record.PAN_Number)
+    );
+
+    // 5. Group records by PAN
     const groupVms = (records: VmsSite[]): GroupedVmsRecords =>
       records.reduce((acc, record) => {
         (acc[record.vendorPan] = acc[record.vendorPan] || []).push(record);
@@ -161,12 +176,12 @@ export default function UpdateExternalIdsPage() {
       }, {} as GroupedExcelRecords);
 
     setProcessingResult({
-      vmsRecords: groupVms(vmsRecordsToUpdate),
-      excelRecords: groupExcel(unmappedExcelRecords),
+      vmsRecords: groupVms(filteredVmsRecords),
+      excelRecords: groupExcel(filteredExcelRecords),
     });
 
     manualUpdateForm.reset({
-      sites: vmsRecordsToUpdate.map((site) => ({
+      sites: filteredVmsRecords.map((site) => ({
         siteId: site.id,
         oracleVendorId: site.oracleVendorId || '',
         oracleSiteId: site.oracleSiteId || '',
@@ -306,7 +321,13 @@ export default function UpdateExternalIdsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion
+                      type="multiple"
+                      className="w-full"
+                      defaultValue={Object.keys(processingResult.vmsRecords).map(
+                        (pan) => `pan-${pan}`
+                      )}
+                    >
                       {Object.entries(processingResult.vmsRecords).map(
                         ([pan, sitesForPan]) => (
                           <AccordionItem value={`pan-${pan}`} key={pan}>
@@ -394,7 +415,13 @@ export default function UpdateExternalIdsPage() {
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
-                    <Accordion type="multiple" className="w-full">
+                    <Accordion
+                      type="multiple"
+                      className="w-full"
+                      defaultValue={Object.keys(
+                        processingResult.excelRecords
+                      ).map((pan) => `excel-pan-${pan}`)}
+                    >
                       {Object.entries(processingResult.excelRecords).map(
                         ([pan, recordsForPan]) => (
                           <AccordionItem value={`excel-pan-${pan}`} key={pan}>
@@ -460,3 +487,5 @@ export default function UpdateExternalIdsPage() {
     </main>
   );
 }
+
+    
