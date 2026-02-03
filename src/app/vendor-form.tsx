@@ -211,8 +211,8 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
           ifscCode: 'TEST0001234',
           branchName: 'Test Branch',
           natureOfBusiness: 'service_provider',
-          natureOfExpense: 'services',
-          paymentFrequency: 'monthly',
+          natureOfExpense: 'rent',
+          paymentFrequency: 'rent',
           referenceName: 'Test Reference',
           referenceContact: 'ref@example.com',
           backgroundCheckNotes: 'All background checks passed.',
@@ -618,6 +618,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                         <SelectItem value="capital_goods">
                           Capital Goods
                         </SelectItem>
+                        <SelectItem value="rent">Rent</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
@@ -644,6 +645,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                         <SelectItem value="quarterly">Quarterly</SelectItem>
                         <SelectItem value="annually">Annually</SelectItem>
                         <SelectItem value="per_invoice">Per Invoice</SelectItem>
+                        <SelectItem value="rent">Rent</SelectItem>
                       </SelectContent>
                     </Select>
                     <FormMessage />
