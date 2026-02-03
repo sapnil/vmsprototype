@@ -183,8 +183,6 @@ export default function SiteDetailsPage({
               label="Official Registration Date"
               value={site.registrationDate}
             />
-            {site.oracleVendorId && <InfoItem icon={Database} label="Oracle Vendor ID" value={site.oracleVendorId} />}
-            {site.oracleSiteId && <InfoItem icon={Database} label="Oracle Site ID" value={site.oracleSiteId} />}
           </div>
         </CardContent>
       </Card>
@@ -271,6 +269,36 @@ export default function SiteDetailsPage({
           />
         </CardContent>
       </Card>
+
+      {(site.oracleVendorId || site.oracleSiteId) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Database className="text-primary" />
+              External IDs
+            </CardTitle>
+            <CardDescription>
+              System identifiers from external integrations.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {site.oracleVendorId && (
+              <InfoItem
+                icon={Database}
+                label="Oracle Vendor ID"
+                value={site.oracleVendorId}
+              />
+            )}
+            {site.oracleSiteId && (
+              <InfoItem
+                icon={Database}
+                label="Oracle Site ID"
+                value={site.oracleSiteId}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
       
       <Card>
         <CardHeader>
