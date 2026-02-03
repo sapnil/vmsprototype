@@ -11,9 +11,6 @@ import {
 import {
     Card,
     CardContent,
-    CardDescription,
-    CardHeader,
-    CardTitle,
 } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import {
@@ -134,13 +131,7 @@ export function VendorList() {
 
     return (
         <Card>
-            <CardHeader>
-                <CardTitle>Vendor Overview</CardTitle>
-                <CardDescription>
-                    A list of all registered vendors. Click to expand and view their sites.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="p-0">
                 <Table>
                     <TableHeader>
                         <TableRow>
