@@ -10,8 +10,8 @@ import {
 import { VendorLinkLogo } from '@/components/icons';
 
 export const metadata: Metadata = {
-  title: 'VendorLink',
-  description: 'Streamlined Vendor Empanelment',
+  title: 'Vendor Management System',
+  description: 'A comprehensive vendor management system',
 };
 
 export default function RootLayout({
@@ -41,7 +41,7 @@ export default function RootLayout({
               <div className="flex items-center gap-2">
                 <VendorLinkLogo className="size-6 text-primary" />
                 <h1 className="font-headline text-lg font-bold tracking-tight">
-                  VendorLink
+                  Vendor Management
                 </h1>
               </div>
               <SidebarTrigger />
