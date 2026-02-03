@@ -24,7 +24,7 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
-import { MoreHorizontal, Eye, Pencil, ChevronDown, ChevronRight, PlusCircle, XCircle } from 'lucide-react';
+import { MoreHorizontal, Eye, ChevronDown, ChevronRight, PlusCircle, XCircle } from 'lucide-react';
 import { mockVendors, type Vendor, type Site } from '@/lib/vendors';
 import { cn } from '@/lib/utils';
 import React, { Fragment, useState } from 'react';
@@ -35,6 +35,11 @@ const statusColors = {
     Approved: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
     Pending: 'bg-yellow-100 text-yellow-800 border-yellow-200 dark:bg-yellow-900/50 dark:text-yellow-300 dark:border-yellow-800',
     Rejected: 'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800',
+};
+
+const activeStatusColors = {
+    Active: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
+    Inactive: 'bg-stone-100 text-stone-800 border-stone-200 dark:bg-stone-900/50 dark:text-stone-300 dark:border-stone-800',
 };
 
 function SiteList({ sites }: { sites: Site[] }) {
@@ -55,7 +60,8 @@ function SiteList({ sites }: { sites: Site[] }) {
                         <TableHead>GST Number</TableHead>
                         <TableHead>Contact</TableHead>
                         <TableHead>Date Added</TableHead>
-                        <TableHead>Status</TableHead>
+                        <TableHead>Approval Status</TableHead>
+                        <TableHead>Activity</TableHead>
                         <TableHead>
                             <span className="sr-only">Actions</span>
                         </TableHead>
@@ -77,6 +83,11 @@ function SiteList({ sites }: { sites: Site[] }) {
                                 </Badge>
                             </TableCell>
                             <TableCell>
+                                <Badge variant="outline" className={cn(site.isActive ? activeStatusColors.Active : activeStatusColors.Inactive)}>
+                                    {site.isActive ? 'Active' : 'Inactive'}
+                                </Badge>
+                            </TableCell>
+                            <TableCell>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
                                         <Button aria-haspopup="true" size="icon" variant="ghost">
@@ -91,10 +102,6 @@ function SiteList({ sites }: { sites: Site[] }) {
                                                 <Eye className="mr-2 h-4 w-4" />
                                                 View
                                             </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem>
-                                            <Pencil className="mr-2 h-4 w-4" />
-                                            Edit
                                         </DropdownMenuItem>
                                         <DropdownMenuItem className="text-destructive">
                                             <XCircle className="mr-2 h-4 w-4" />
@@ -141,6 +148,7 @@ export function VendorList() {
                             <TableHead>Vendor (Trade Name) / PAN</TableHead>
                             <TableHead>Sites</TableHead>
                             <TableHead>Date Added</TableHead>
+                            <TableHead>Status</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
@@ -162,6 +170,11 @@ export function VendorList() {
                                         <Badge variant="secondary">{vendor.sites.length}</Badge>
                                     </TableCell>
                                     <TableCell>{vendor.sites.length > 0 ? vendor.sites[0].dateAdded : 'N/A'}</TableCell>
+                                    <TableCell>
+                                        <Badge variant="outline" className={cn(vendor.isActive ? activeStatusColors.Active : activeStatusColors.Inactive)}>
+                                            {vendor.isActive ? 'Active' : 'Inactive'}
+                                        </Badge>
+                                    </TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex items-center justify-end gap-2" onClick={(e) => e.stopPropagation()}>
                                             <Link href={`/?vendorId=${vendor.id}`} passHref>
@@ -190,7 +203,7 @@ export function VendorList() {
                                 </TableRow>
                                 {openVendorId === vendor.id && (
                                      <TableRow>
-                                        <TableCell colSpan={5} className="p-0 !border-0">
+                                        <TableCell colSpan={6} className="p-0 !border-0">
                                             <SiteList sites={vendor.sites} />
                                         </TableCell>
                                     </TableRow>

@@ -39,6 +39,11 @@ const statusColors = {
     'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800',
 };
 
+const activeStatusColors = {
+    Active: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
+    Inactive: 'bg-stone-100 text-stone-800 border-stone-200 dark:bg-stone-900/50 dark:text-stone-300 dark:border-stone-800',
+};
+
 const InfoItem = ({
   icon: Icon,
   label,
@@ -148,15 +153,20 @@ export default function SiteDetailsPage({
                 </Link>
               </CardDescription>
             </div>
-            <Badge
-              variant="outline"
-              className={cn(
-                statusColors[site.status],
-                'self-start sm:self-center'
-              )}
-            >
-              {site.status}
-            </Badge>
+            <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
+              <Badge
+                variant="outline"
+                className={cn(statusColors[site.status])}
+              >
+                {site.status}
+              </Badge>
+              <Badge
+                variant="outline"
+                className={cn(site.isActive ? activeStatusColors.Active : activeStatusColors.Inactive)}
+              >
+                {site.isActive ? 'Active' : 'Inactive'}
+              </Badge>
+            </div>
           </div>
         </CardHeader>
         <CardContent>

@@ -9,6 +9,7 @@ export type Site = {
   contactPhone: string;
   dateAdded: string;
   status: 'Approved' | 'Pending' | 'Rejected';
+  isActive: boolean;
   bankName: string;
   accountNumber: string;
   ifscCode: string;
@@ -26,6 +27,7 @@ export type Vendor = {
   tradeName: string;
   panNumber: string;
   sites: Site[];
+  isActive: boolean;
 };
 
 export const mockVendors: Vendor[] = [
@@ -33,6 +35,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN001',
     tradeName: 'Innovate Supplies',
     panNumber: 'AABCDE1234F',
+    isActive: true,
     sites: [
       {
         id: 'SITE001',
@@ -45,6 +48,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43210',
         dateAdded: '2023-10-15',
         status: 'Approved',
+        isActive: true,
         bankName: 'HDFC Bank',
         accountNumber: '50100123456789',
         ifscCode: 'HDFC0000123',
@@ -62,6 +66,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN002',
     tradeName: 'Quantum Solutions',
     panNumber: 'BBCDE1234F',
+    isActive: true,
     sites: [
       {
         id: 'SITE002',
@@ -75,6 +80,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43211',
         dateAdded: '2023-11-01',
         status: 'Pending',
+        isActive: true,
         bankName: 'ICICI Bank',
         accountNumber: '000101234567',
         ifscCode: 'ICIC0000001',
@@ -90,6 +96,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN003',
     tradeName: 'GreenScape Services',
     panNumber: 'CCDE1234F',
+    isActive: true,
     sites: [
       {
         id: 'SITE003',
@@ -102,6 +109,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43212',
         dateAdded: '2023-09-20',
         status: 'Approved',
+        isActive: false,
         bankName: 'Axis Bank',
         accountNumber: '912345678901',
         ifscCode: 'UTIB0000001',
@@ -118,6 +126,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN004',
     tradeName: 'TechGenix',
     panNumber: 'DDECDE1234F',
+    isActive: false,
     sites: [
       {
         id: 'SITE004',
@@ -130,6 +139,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43213',
         dateAdded: '2023-11-05',
         status: 'Rejected',
+        isActive: true,
         bankName: 'Kotak Mahindra Bank',
         accountNumber: '123456789012',
         ifscCode: 'KKBK0000123',
@@ -146,6 +156,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN005',
     tradeName: 'Apex Logistics',
     panNumber: 'EECDE1234F',
+    isActive: true,
     sites: [
       {
         id: 'SITE005',
@@ -159,6 +170,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43214',
         dateAdded: '2023-08-12',
         status: 'Approved',
+        isActive: true,
         bankName: 'State Bank of India',
         accountNumber: '10987654321',
         ifscCode: 'SBIN0000123',
@@ -182,6 +194,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43214',
         dateAdded: '2023-11-12',
         status: 'Pending',
+        isActive: true,
         bankName: 'State Bank of India',
         accountNumber: '10987654321',
         ifscCode: 'SBIN0000456',
@@ -196,6 +209,7 @@ export const mockVendors: Vendor[] = [
     id: 'VEN006',
     tradeName: 'Creative Minds',
     panNumber: 'FFCDE1234F',
+    isActive: true,
     sites: [
       {
         id: 'SITE007',
@@ -208,6 +222,7 @@ export const mockVendors: Vendor[] = [
         contactPhone: '+91 98765 43215',
         dateAdded: '2023-11-10',
         status: 'Pending',
+        isActive: true,
         bankName: 'Yes Bank',
         accountNumber: '0123456789012',
         ifscCode: 'YESB0000123',
