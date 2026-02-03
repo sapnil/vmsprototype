@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { Home, Users, Settings, LogOut } from 'lucide-react';
+import { Home, Users, Settings, LogOut, UploadCloud } from 'lucide-react';
 import {
   Sidebar,
   SidebarHeader,
@@ -29,6 +29,11 @@ import {
 const menuItems = [
   { href: '/', label: 'Add Vendor', icon: Home },
   { href: '/vendors', label: 'Vendor List', icon: Users },
+  {
+    href: '/vendors/update-external-ids',
+    label: 'Update Oracle IDs',
+    icon: UploadCloud,
+  },
 ];
 
 export function AppSidebar() {
