@@ -137,7 +137,7 @@ export function VendorList() {
                     <TableHeader>
                         <TableRow>
                             <TableHead className="w-[50px]"></TableHead>
-                            <TableHead>Vendor (Trade Name)</TableHead>
+                            <TableHead>Vendor (Trade Name) / PAN</TableHead>
                             <TableHead>Sites</TableHead>
                             <TableHead>Date Added</TableHead>
                             <TableHead className="text-right">Actions</TableHead>
@@ -155,6 +155,7 @@ export function VendorList() {
                                     </TableCell>
                                     <TableCell className="font-medium">
                                         <div className="font-bold">{vendor.tradeName}</div>
+                                        <div className="text-sm text-muted-foreground font-mono">{vendor.panNumber}</div>
                                     </TableCell>
                                     <TableCell>
                                         <Badge variant="secondary">{vendor.sites.length}</Badge>
