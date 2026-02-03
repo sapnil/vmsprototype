@@ -122,13 +122,8 @@ export default function UpdateExternalIdsPage() {
       }))
     );
 
-    // 1. Find VMS records that need IDs
-    const vmsRecordsToUpdate = allSitesWithVendorInfo.filter(
-      (site) => !site.oracleVendorId || !site.oracleSiteId
-    );
-
-    // 2. Mock some unmapped Excel records
-    const unmappedExcelRecords: ExcelRecord[] = [
+    // 1. These are the mock records from the uploaded Excel file.
+    const excelRecords: ExcelRecord[] = [
       {
         PAN_Number: 'CCDE1234F', // This PAN matches GreenScape Services
         GST_Number: '36CCDE1234F1Z5',
@@ -147,22 +142,26 @@ export default function UpdateExternalIdsPage() {
       },
     ];
 
-    // 3. Find common PANs
-    const vmsPans = new Set(vmsRecordsToUpdate.map((site) => site.vendorPan));
-    const excelPans = new Set(
-      unmappedExcelRecords.map((record) => record.PAN_Number)
-    );
-    const commonPans = new Set([...vmsPans].filter((pan) => excelPans.has(pan)));
+    // 2. Get the set of PANs from our mock Excel file.
+    const excelPans = new Set(excelRecords.map((record) => record.PAN_Number));
 
-    // 4. Filter both lists to only include records with common PANs
-    const filteredVmsRecords = vmsRecordsToUpdate.filter((site) =>
-      commonPans.has(site.vendorPan)
-    );
-    const filteredExcelRecords = unmappedExcelRecords.filter((record) =>
-      commonPans.has(record.PAN_Number)
+    // 3. Find VMS records that both need an ID AND have a PAN that's in the Excel file.
+    const vmsRecordsToMap = allSitesWithVendorInfo.filter(
+      (site) =>
+        (!site.oracleVendorId || !site.oracleSiteId) &&
+        excelPans.has(site.vendorPan)
     );
 
-    // 5. Group records by PAN
+    // 4. Get the set of PANs from the VMS records we just found.
+    const vmsPansToMap = new Set(vmsRecordsToMap.map((site) => site.vendorPan));
+
+    // 5. Filter the Excel records to only include those that have a matching VMS record.
+    const excelRecordsToMap = excelRecords.filter((record) =>
+      vmsPansToMap.has(record.PAN_Number)
+    );
+
+
+    // 6. Group records by PAN
     const groupVms = (records: VmsSite[]): GroupedVmsRecords =>
       records.reduce((acc, record) => {
         (acc[record.vendorPan] = acc[record.vendorPan] || []).push(record);
@@ -176,12 +175,12 @@ export default function UpdateExternalIdsPage() {
       }, {} as GroupedExcelRecords);
 
     setProcessingResult({
-      vmsRecords: groupVms(filteredVmsRecords),
-      excelRecords: groupExcel(filteredExcelRecords),
+      vmsRecords: groupVms(vmsRecordsToMap),
+      excelRecords: groupExcel(excelRecordsToMap),
     });
 
     manualUpdateForm.reset({
-      sites: filteredVmsRecords.map((site) => ({
+      sites: vmsRecordsToMap.map((site) => ({
         siteId: site.id,
         oracleVendorId: site.oracleVendorId || '',
         oracleSiteId: site.oracleSiteId || '',
@@ -487,5 +486,3 @@ export default function UpdateExternalIdsPage() {
     </main>
   );
 }
-
-    
