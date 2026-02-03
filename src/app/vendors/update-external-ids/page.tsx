@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -62,7 +63,7 @@ type UploadFormValues = z.infer<typeof uploadFormSchema>;
 const manualUpdateFormSchema = z.object({
   sites: z.array(
     z.object({
-      id: z.string(),
+      siteId: z.string(),
       oracleVendorId: z.string().optional(),
       oracleSiteId: z.string().optional(),
     })
@@ -166,7 +167,7 @@ export default function UpdateExternalIdsPage() {
 
     manualUpdateForm.reset({
       sites: vmsRecordsToUpdate.map((site) => ({
-        id: site.id,
+        siteId: site.id,
         oracleVendorId: site.oracleVendorId || '',
         oracleSiteId: site.oracleSiteId || '',
       })),
@@ -315,13 +316,13 @@ export default function UpdateExternalIdsPage() {
                             <AccordionContent className="space-y-4 pt-2">
                               {sitesForPan.map((site) => {
                                 const fieldIndex = fields.findIndex(
-                                  (f) => f.id === site.id
+                                  (f) => f.siteId === site.id
                                 );
                                 if (fieldIndex === -1) return null;
 
                                 return (
                                   <div
-                                    key={site.id}
+                                    key={fields[fieldIndex].id}
                                     className="space-y-4 rounded-lg border p-4"
                                   >
                                     <div>
