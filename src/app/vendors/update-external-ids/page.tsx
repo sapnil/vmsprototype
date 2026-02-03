@@ -127,9 +127,9 @@ export default function UpdateExternalIdsPage() {
       {
         PAN_Number: 'CCDE1234F', // This PAN matches GreenScape Services
         GST_Number: '36CCDE1234F1Z5',
-        Bank_Account_Number: '9876543210',
+        Bank_Account_Number: '912345678901', // This now matches GreenScape's account number
         Oracle_Vendor_ID: 'EXL-VEN-901',
-        Oracle_Site_ID: 'EXL-SITE-901',
+        Oracle_Site_ID: 'EXL-SITE-901', // This will be ignored for the manual update part
         rowNumber: 5,
       },
       {
@@ -161,7 +161,7 @@ export default function UpdateExternalIdsPage() {
     );
 
 
-    // 6. Group records by PAN
+    // 6. Group records by PAN for display
     const groupVms = (records: VmsSite[]): GroupedVmsRecords =>
       records.reduce((acc, record) => {
         (acc[record.vendorPan] = acc[record.vendorPan] || []).push(record);
@@ -178,13 +178,22 @@ export default function UpdateExternalIdsPage() {
       vmsRecords: groupVms(vmsRecordsToMap),
       excelRecords: groupExcel(excelRecordsToMap),
     });
-
+    
     manualUpdateForm.reset({
-      sites: vmsRecordsToMap.map((site) => ({
-        siteId: site.id,
-        oracleVendorId: site.oracleVendorId || '',
-        oracleSiteId: site.oracleSiteId || '',
-      })),
+      sites: vmsRecordsToMap.map((vmsSite) => {
+        const excelRecord = excelRecordsToMap.find(
+          (rec) =>
+            rec.PAN_Number === vmsSite.vendorPan &&
+            rec.GST_Number === vmsSite.gstNumber &&
+            rec.Bank_Account_Number === vmsSite.accountNumber
+        );
+
+        return {
+          siteId: vmsSite.id,
+          oracleVendorId: excelRecord ? excelRecord.Oracle_Vendor_ID : '',
+          oracleSiteId: '', // Always leave blank for manual entry
+        };
+      }),
     });
 
     setView('manual-mapping');
@@ -366,8 +375,9 @@ export default function UpdateExternalIdsPage() {
                                             </FormLabel>
                                             <FormControl>
                                               <Input
-                                                placeholder="Enter Vendor ID"
+                                                placeholder="Prefilled from file"
                                                 {...field}
+                                                readOnly
                                               />
                                             </FormControl>
                                             <FormMessage />
