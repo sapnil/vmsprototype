@@ -15,10 +15,18 @@ import {
   User,
   Hash,
   ArrowLeft,
+  MapPin,
+  Phone,
+  Landmark,
+  Briefcase,
+  FileText,
+  Clock,
+  Banknote,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { cn } from '@/lib/utils';
+import { Separator } from '@/components/ui/separator';
 
 const statusColors = {
   Approved:
@@ -28,6 +36,24 @@ const statusColors = {
   Rejected:
     'bg-red-100 text-red-800 border-red-200 dark:bg-red-900/50 dark:text-red-300 dark:border-red-800',
 };
+
+const InfoItem = ({
+  icon: Icon,
+  label,
+  value,
+}: {
+  icon: React.ElementType;
+  label: string;
+  value: React.ReactNode;
+}) => (
+  <div className="flex items-start gap-4">
+    <Icon className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
+    <div>
+      <p className="text-sm text-muted-foreground">{label}</p>
+      <p className="font-medium">{value}</p>
+    </div>
+  </div>
+);
 
 export default function SiteDetailsPage({
   params,
@@ -52,8 +78,8 @@ export default function SiteDetailsPage({
   }
 
   return (
-    <main className="container mx-auto max-w-5xl px-4 py-10">
-      <div className="mb-8">
+    <main className="container mx-auto max-w-5xl space-y-8 px-4 py-10">
+      <div>
         <Button asChild variant="outline">
           <Link href="/vendors">
             <ArrowLeft className="mr-2 h-4 w-4" />
@@ -66,7 +92,10 @@ export default function SiteDetailsPage({
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle>Site Details: {site.legalName}</CardTitle>
+              <CardTitle className="flex items-center gap-3">
+                <Building2 className="h-7 w-7 text-primary" />
+                <span>{site.legalName}</span>
+              </CardTitle>
               <CardDescription className="mt-1">
                 Part of vendor:{' '}
                 <Link
@@ -88,51 +117,103 @@ export default function SiteDetailsPage({
             </Badge>
           </div>
         </CardHeader>
-        <CardContent className="grid gap-6 pt-6">
-          <div className="grid grid-cols-1 gap-y-6 gap-x-4 md:grid-cols-2 lg:grid-cols-3">
-            <div className="flex items-start gap-4">
-              <Hash className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">GST Number</p>
-                <p className="font-medium">{site.gstNumber}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Building2 className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Legal Name</p>
-                <p className="font-medium">{site.legalName}</p>
-              </div>
-            </div>
-            <div className="flex items-start gap-4">
-              <Calendar className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
-              <div>
-                <p className="text-sm text-muted-foreground">Date Added</p>
-                <p className="font-medium">{site.dateAdded}</p>
-              </div>
-            </div>
+        <CardContent>
+          <div className="grid grid-cols-1 gap-x-4 gap-y-6 md:grid-cols-2 lg:grid-cols-3">
+            <InfoItem icon={Hash} label="GST Number" value={site.gstNumber} />
+            <InfoItem
+              icon={Calendar}
+              label="Date Added to System"
+              value={site.dateAdded}
+            />
+            <InfoItem
+              icon={Calendar}
+              label="Official Registration Date"
+              value={site.registrationDate}
+            />
           </div>
-          <div className="border-t pt-6">
-            <h3 className="mb-4 text-lg font-semibold">Contact Information</h3>
-            <div className="grid grid-cols-1 gap-y-6 gap-x-4 md:grid-cols-2">
-              <div className="flex items-start gap-4">
-                <User className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">
-                    Contact Person
-                  </p>
-                  <p className="font-medium">{site.contactPerson}</p>
-                </div>
-              </div>
-              <div className="flex items-start gap-4">
-                <Mail className="mt-1 h-6 w-6 flex-shrink-0 text-muted-foreground" />
-                <div>
-                  <p className="text-sm text-muted-foreground">Contact Email</p>
-                  <p className="font-medium">{site.contactEmail}</p>
-                </div>
-              </div>
-            </div>
-          </div>
+        </CardContent>
+      </Card>
+
+      <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <User className="text-primary" />
+              Contact & Address
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <InfoItem
+              icon={User}
+              label="Contact Person"
+              value={site.contactPerson}
+            />
+            <InfoItem
+              icon={Mail}
+              label="Contact Email"
+              value={site.contactEmail}
+            />
+            <InfoItem
+              icon={Phone}
+              label="Contact Phone"
+              value={site.contactPhone}
+            />
+            <Separator />
+            <InfoItem
+              icon={MapPin}
+              label="Registered Address"
+              value={site.address}
+            />
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Landmark className="text-primary" />
+              Bank Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-6">
+            <InfoItem icon={Landmark} label="Bank Name" value={site.bankName} />
+            <InfoItem
+              icon={Hash}
+              label="Account Number"
+              value={site.accountNumber}
+            />
+            <InfoItem icon={FileText} label="IFSC Code" value={site.ifscCode} />
+            <InfoItem
+              icon={Building2}
+              label="Branch Name"
+              value={site.branchName}
+            />
+          </CardContent>
+        </Card>
+      </div>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Briefcase className="text-primary" />
+            Business Attributes
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
+          <InfoItem
+            icon={Briefcase}
+            label="Nature of Business"
+            value={site.natureOfBusiness}
+          />
+          <InfoItem
+            icon={Banknote}
+            label="Nature of Expense"
+            value={site.natureOfExpense}
+          />
+          <InfoItem
+            icon={Clock}
+            label="Payment Frequency"
+            value={site.paymentFrequency}
+          />
         </CardContent>
       </Card>
     </main>
