@@ -243,6 +243,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
   const form = useForm<VendorFormValues>({
     resolver: zodResolver(formSchema),
     defaultValues: {
+      vendorCode: vendor?.id,
       gstNumber: '27ABCDE1234F1Z4',
       tradeName: isNewSiteFlow ? vendor?.tradeName || '' : 'Test Vendor Inc.',
       legalName: 'Test Legal Name',
@@ -388,7 +389,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                     <FormItem>
                       <FormLabel>Vendor Code</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g. VC12345" {...field} />
+                        <Input placeholder="Vendor Code" {...field} readOnly />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
