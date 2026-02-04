@@ -17,7 +17,12 @@ import {
   ArrowRight,
   ArrowLeft,
   Check,
+  Briefcase,
+  Receipt,
+  FileSignature,
+  CalendarIcon,
 } from 'lucide-react';
+import { format } from 'date-fns';
 
 import { Button } from '@/components/ui/button';
 import {
@@ -49,36 +54,74 @@ import { useToast } from '@/hooks/use-toast';
 import { handleGstAutofill } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { mockVendors } from '@/lib/vendors';
+import { Checkbox } from '@/components/ui/checkbox';
+import {
+  RadioGroup,
+  RadioGroupItem,
+} from '@/components/ui/radio-group';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { Calendar } from '@/components/ui/calendar';
 
 const formSchema = z.object({
+  // Contact & Identity
+  vendorCode: z.string().optional(),
   gstNumber: z.string().length(15, 'GST Number must be 15 characters.'),
   tradeName: z.string().min(2, 'Trade name is required.'),
   legalName: z.string().min(2, 'Legal name is required.'),
   panNumber: z.string().length(10, 'PAN must be 10 characters.'),
+  panLinkedWithAadhar: z.boolean().default(false),
   registrationDate: z.string().min(1, 'Registration date is required.'),
-  address: z.string().min(10, 'Address is required.'),
+  address1: z.string().min(3, 'Address Line 1 is required.'),
+  address2: z.string().optional(),
+  city: z.string().min(2, 'City is required.'),
+  state: z.string().min(2, 'State is required.'),
+  pincode: z.string().length(6, 'Pincode must be 6 digits.'),
   contactPerson: z.string().min(2, 'Contact person name is required.'),
   contactEmail: z.string().email('Invalid email address.'),
   contactPhone: z
     .string()
     .min(10, 'Phone number must be at least 10 digits.'),
+  departmentName: z.string().optional(),
 
-  bankName: z.string().min(2, 'Bank name is required.'),
-  accountNumber: z.string().min(9, 'Account number is required.'),
-  ifscCode: z.string().length(11, 'IFSC code must be 11 characters.'),
-  branchName: z.string().min(2, 'Branch name is required.'),
-
-  natureOfBusiness: z.string({ required_error: 'This field is required.' }),
-  natureOfExpense: z.string({ required_error: 'This field is required.' }),
+  // Business & Compliance
+  natureOfService: z.string({ required_error: 'This field is required.' }),
   paymentFrequency: z.string({ required_error: 'This field is required.' }),
+  composite: z.boolean().default(false),
+  eInvoiceRequired: z.boolean().default(false),
+  registeredUnderMsme: z.boolean().default(false),
+  msmeRegistrationNumber: z.string().optional(),
+  paygroup: z.string().optional(),
+  groupCode: z.string().optional(),
 
-  referenceName: z.string().optional(),
-  referenceContact: z.string().optional(),
-  backgroundCheckNotes: z.string().optional(),
+  // Bank Details
+  bankName: z.string().min(2, 'Bank name is required.'),
+  branchName: z.string().min(2, 'Branch name is required.'),
+  accountNumber: z.string().min(9, 'Account number is required.'),
+  accountType: z.enum(['savings', 'current'], {
+    required_error: 'You need to select an account type.',
+  }),
+  ifscCode: z.string().length(11, 'IFSC code must be 11 characters.'),
+  crn: z.string().optional(),
 
+  // Tax Information
+  taxExemption: z.boolean().default(false),
+  tdsRate: z.string().optional(),
+  tdsExemptionCertificateNumber: z.string().optional(),
+  tdsExemptionFromDate: z.date().optional(),
+  tdsExemptionToDate: z.date().optional(),
+  itrFiled: z.boolean().default(false),
+
+  // Agreement Details
+  agreementStartDate: z.date().optional(),
+  agreementEndDate: z.date().optional(),
+
+  // Document Upload
   registrationCertificate: z.any().optional(),
   panCard: z.any().optional(),
   addressProof: z.any().optional(),
+  itrProof: z.any().optional(),
+  msmeCertificate: z.any().optional(),
+  tdsExemptionCertificate: z.any().optional(),
 });
 
 type VendorFormValues = z.infer<typeof formSchema>;
@@ -88,36 +131,58 @@ const steps = [
     id: 'Contact & Identity',
     icon: Building2,
     fields: [
+      'vendorCode',
       'gstNumber',
       'tradeName',
       'legalName',
       'panNumber',
+      'panLinkedWithAadhar',
       'registrationDate',
-      'address',
+      'address1',
+      'city',
+      'state',
+      'pincode',
       'contactPerson',
       'contactEmail',
       'contactPhone',
     ],
   },
   {
+    id: 'Business & Compliance',
+    icon: Briefcase,
+    fields: [
+      'natureOfService',
+      'paymentFrequency',
+      'registeredUnderMsme',
+      'msmeRegistrationNumber',
+    ],
+  },
+  {
     id: 'Bank Details',
     icon: Landmark,
-    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName'],
+    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName', 'accountType'],
   },
   {
-    id: 'Business Attributes',
-    icon: FileText,
-    fields: ['natureOfBusiness', 'natureOfExpense', 'paymentFrequency'],
+    id: 'Tax Information',
+    icon: Receipt,
+    fields: ['taxExemption', 'tdsRate', 'itrFiled'],
   },
   {
-    id: 'References',
-    icon: Users,
-    fields: ['referenceName', 'referenceContact', 'backgroundCheckNotes'],
+    id: 'Agreement Details',
+    icon: FileSignature,
+    fields: ['agreementStartDate', 'agreementEndDate'],
   },
   {
     id: 'Document Upload',
     icon: ShieldCheck,
-    fields: ['registrationCertificate', 'panCard', 'addressProof'],
+    fields: [
+      'registrationCertificate',
+      'panCard',
+      'addressProof',
+      'itrProof',
+      'msmeCertificate',
+      'tdsExemptionCertificate',
+    ],
   },
 ];
 
@@ -177,46 +242,34 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
 
   const form = useForm<VendorFormValues>({
     resolver: zodResolver(formSchema),
-    defaultValues: isNewSiteFlow
-      ? {
-          gstNumber: '',
-          tradeName: vendor?.tradeName || '',
-          legalName: '',
-          panNumber: vendor?.panNumber || '',
-          registrationDate: '',
-          address: '',
-          contactPerson: '',
-          contactEmail: '',
-          contactPhone: '',
-          bankName: '',
-          accountNumber: '',
-          ifscCode: '',
-          branchName: '',
-          referenceName: '',
-          referenceContact: '',
-          backgroundCheckNotes: '',
-        }
-      : {
-          gstNumber: '27ABCDE1234F1Z4',
-          tradeName: 'Test Vendor Inc.',
-          legalName: 'Test Legal Name',
-          panNumber: 'ABCDE1234F',
-          registrationDate: '01/01/2024',
-          address: '123 Test Street, Test City, Test State 12345',
-          contactPerson: 'Test Person',
-          contactEmail: 'test@example.com',
-          contactPhone: '9876543210',
-          bankName: 'Test Bank of Testing',
-          accountNumber: '0987654321',
-          ifscCode: 'TEST0001234',
-          branchName: 'Test Branch',
-          natureOfBusiness: 'service_provider',
-          natureOfExpense: 'rent',
-          paymentFrequency: 'rent',
-          referenceName: 'Test Reference',
-          referenceContact: 'ref@example.com',
-          backgroundCheckNotes: 'All background checks passed.',
-        },
+    defaultValues: {
+      gstNumber: '27ABCDE1234F1Z4',
+      tradeName: isNewSiteFlow ? vendor?.tradeName || '' : 'Test Vendor Inc.',
+      legalName: 'Test Legal Name',
+      panNumber: isNewSiteFlow ? vendor?.panNumber || '' : 'ABCDE1234F',
+      registrationDate: '01/01/2024',
+      address1: '123 Test Street',
+      city: 'Test City',
+      state: 'Test State',
+      pincode: '123456',
+      contactPerson: 'Test Person',
+      contactEmail: 'test@example.com',
+      contactPhone: '9876543210',
+      natureOfService: 'service_provider',
+      paymentFrequency: 'rent',
+      bankName: 'Test Bank of Testing',
+      accountNumber: '0987654321',
+      ifscCode: 'TEST0001234',
+      branchName: 'Test Branch',
+      accountType: 'current',
+      panLinkedWithAadhar: true,
+      composite: false,
+      eInvoiceRequired: true,
+      itrFiled: true,
+      registeredUnderMsme: true,
+      msmeRegistrationNumber: 'MSME123456789',
+      taxExemption: false,
+    },
   });
 
   const onGstAutofill = async () => {
@@ -225,19 +278,20 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     if (form.getFieldState('gstNumber').invalid) return;
 
     setIsAutofilling(true);
-    const result = await handleGstAutofill(gstNumber);
+    const {data: result, error} = await handleGstAutofill(gstNumber);
     setIsAutofilling(false);
 
-    if (result.error || !result.data) {
+    if (error || !result) {
       toast({
         variant: 'destructive',
         title: 'Autofill Failed',
-        description: result.error,
+        description: error,
       });
     } else {
-      const { legalName, address, panNumber, registrationDate } = result.data;
+      const { legalName, address, panNumber, registrationDate } = result;
       form.setValue('legalName', legalName, { shouldValidate: true });
-      form.setValue('address', address, { shouldValidate: true });
+      // Assuming address is a single string from API, we put it in address1
+      form.setValue('address1', address, { shouldValidate: true }); 
       form.setValue('panNumber', panNumber, { shouldValidate: true });
       form.setValue('registrationDate', registrationDate, {
         shouldValidate: true,
@@ -326,6 +380,21 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              {isNewSiteFlow && (
+                 <FormField
+                  control={form.control}
+                  name="vendorCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Vendor Code</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. VC12345" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              )}
               <div className="flex flex-col items-end gap-2 sm:flex-row">
                 <FormField
                   control={form.control}
@@ -360,7 +429,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   name="tradeName"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Trade Name / Business Name</FormLabel>
+                      <FormLabel>Trade Name / Vendor Name</FormLabel>
                       <FormControl>
                         <Input
                           placeholder="Your business name"
@@ -424,23 +493,95 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   )}
                 />
               </div>
-              <FormField
-                control={form.control}
-                name="address"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Registered Address</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Prefilled by AI"
-                        readOnly
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+               <FormField
+                  control={form.control}
+                  name="panLinkedWithAadhar"
+                  render={({ field }) => (
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                        />
+                      </FormControl>
+                      <div className="space-y-1 leading-none">
+                        <FormLabel>
+                          PAN Linked with Aadhaar
+                        </FormLabel>
+                      </div>
+                    </FormItem>
+                  )}
+                />
+              <div className="space-y-4">
+                <p className="text-sm font-medium">Registered Address</p>
+                <FormField
+                  control={form.control}
+                  name="address1"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address Line 1</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Street, building number" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="address2"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Address Line 2 (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Apartment, suite, etc." {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-3">
+                   <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>City</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Mumbai" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="state"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>State</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. Maharashtra" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                   <FormField
+                    control={form.control}
+                    name="pincode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Pincode</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. 400001" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
                   control={form.control}
@@ -460,7 +601,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   name="contactEmail"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Email</FormLabel>
+                      <FormLabel>Contact Email / Email ID</FormLabel>
                       <FormControl>
                         <Input
                           type="email"
@@ -477,9 +618,22 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   name="contactPhone"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Contact Phone</FormLabel>
+                      <FormLabel>Contact Phone / Mobile No</FormLabel>
                       <FormControl>
                         <Input type="tel" placeholder="+91 98765 43210" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
+                  control={form.control}
+                  name="departmentName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Department Name (Optional)</FormLabel>
+                      <FormControl>
+                        <Input placeholder="e.g. Finance" {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -494,66 +648,186 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Landmark className="text-primary" />
-                Bank Details
+                <Briefcase className="text-primary" />
+                Business & Compliance
               </CardTitle>
               <CardDescription>
-                Provide your bank account details for payments.
+                Help us understand your business better.
               </CardDescription>
             </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
-              <FormField
-                control={form.control}
-                name="bankName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Bank Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. State Bank of India" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            <CardContent className="space-y-6">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="natureOfService"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Nature of Service</FormLabel>
+                            <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            >
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="manufacturer">Manufacturer</SelectItem>
+                                <SelectItem value="trader">Trader</SelectItem>
+                                <SelectItem value="service_provider">
+                                Service Provider
+                                </SelectItem>
+                                 <SelectItem value="raw_material">Raw Material</SelectItem>
+                                <SelectItem value="capital_goods">
+                                Capital Goods
+                                </SelectItem>
+                                <SelectItem value="rent">Rent</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="paymentFrequency"
+                        render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Payment Frequency</FormLabel>
+                            <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            >
+                            <FormControl>
+                                <SelectTrigger>
+                                <SelectValue placeholder="Select..." />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                <SelectItem value="monthly">Monthly</SelectItem>
+                                <SelectItem value="quarterly">Quarterly</SelectItem>
+                                <SelectItem value="annually">Annually</SelectItem>
+                                <SelectItem value="per_invoice">Per Invoice</SelectItem>
+                                <SelectItem value="rent">Rent</SelectItem>
+                            </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </div>
+                 <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                    <FormField
+                        control={form.control}
+                        name="paygroup"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Paygroup (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Enter paygroup" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="groupCode"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>Group Code (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="Enter group code" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+                <div className="space-y-4">
+                     <FormField
+                        control={form.control}
+                        name="composite"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                Composite GST Scheme
+                                </FormLabel>
+                                <FormDescription>
+                                Is the vendor registered under the composite GST scheme?
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="eInvoiceRequired"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                E-Invoice Required
+                                </FormLabel>
+                                <FormDescription>
+                                Is e-invoicing mandatory for this vendor?
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="registeredUnderMsme"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                Registered under MSME
+                                </FormLabel>
+                                <FormDescription>
+                                Is the vendor a registered Micro, Small, or Medium Enterprise?
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                        />
+                </div>
+                {form.watch('registeredUnderMsme') && (
+                    <FormField
+                        control={form.control}
+                        name="msmeRegistrationNumber"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>MSME Registration Number</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g. UDYAM-XX-00-0000000" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
                 )}
-              />
-              <FormField
-                control={form.control}
-                name="accountNumber"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Account Number</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Enter your account number" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="ifscCode"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>IFSC Code</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. SBIN0001234" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="branchName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Branch Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="e.g. Main Branch, Delhi" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
         )}
@@ -562,164 +836,385 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <FileText className="text-primary" />
-                Business Attributes
+                <Landmark className="text-primary" />
+                Bank Details
               </CardTitle>
               <CardDescription>
-                Help us understand your business better.
-              </CardDescription>
-            </CardHeader>
-            <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-3">
-              <FormField
-                control={form.control}
-                name="natureOfBusiness"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nature of Business</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="manufacturer">Manufacturer</SelectItem>
-                        <SelectItem value="trader">Trader</SelectItem>
-                        <SelectItem value="service_provider">
-                          Service Provider
-                        </SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="natureOfExpense"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Nature of Expense</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="raw_material">Raw Material</SelectItem>
-                        <SelectItem value="services">Services</SelectItem>
-                        <SelectItem value="capital_goods">
-                          Capital Goods
-                        </SelectItem>
-                        <SelectItem value="rent">Rent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="paymentFrequency"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Payment Frequency</FormLabel>
-                    <Select
-                      onValueChange={field.onChange}
-                      defaultValue={field.value}
-                    >
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Select..." />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        <SelectItem value="monthly">Monthly</SelectItem>
-                        <SelectItem value="quarterly">Quarterly</SelectItem>
-                        <SelectItem value="annually">Annually</SelectItem>
-                        <SelectItem value="per_invoice">Per Invoice</SelectItem>
-                        <SelectItem value="rent">Rent</SelectItem>
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-            </CardContent>
-          </Card>
-        )}
-
-        {currentStep === 3 && (
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Users className="text-primary" />
-                Reference & Background Checks
-              </CardTitle>
-              <CardDescription>
-                Optional: Provide references and background check details.
+                Provide your bank account details for payments.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
-                  control={form.control}
-                  name="referenceName"
-                  render={({ field }) => (
+                    control={form.control}
+                    name="bankName"
+                    render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Reference Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g. John Smith" {...field} />
-                      </FormControl>
-                      <FormMessage />
+                        <FormLabel>Bank Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. State Bank of India" {...field} />
+                        </FormControl>
+                        <FormMessage />
                     </FormItem>
-                  )}
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="branchName"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Branch Name</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. Main Branch, Delhi" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
                 />
                 <FormField
-                  control={form.control}
-                  name="referenceContact"
-                  render={({ field }) => (
+                    control={form.control}
+                    name="accountNumber"
+                    render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Reference Contact</FormLabel>
+                        <FormLabel>Account Number</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Enter your account number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="ifscCode"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>IFSC Code</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g. SBIN0001234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                 <FormField
+                    control={form.control}
+                    name="crn"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>CRN (Optional)</FormLabel>
+                        <FormControl>
+                        <Input placeholder="Customer Relationship Number" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+              </div>
+               <FormField
+                  control={form.control}
+                  name="accountType"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Type of Account</FormLabel>
                       <FormControl>
-                        <Input
-                          placeholder="Email or phone number"
-                          {...field}
-                        />
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col space-y-1"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="savings" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Savings
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="current" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              Current
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
-              </div>
-              <FormField
-                control={form.control}
-                name="backgroundCheckNotes"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Background Check Notes</FormLabel>
-                    <FormControl>
-                      <Textarea
-                        placeholder="Notes on background checks performed..."
-                        {...field}
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
             </CardContent>
           </Card>
         )}
 
+        {currentStep === 3 && (
+            <Card>
+                <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Receipt className="text-primary" />
+                    Tax Information
+                </CardTitle>
+                <CardDescription>
+                    Provide details about your tax status and exemptions.
+                </CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-6">
+                    <FormField
+                        control={form.control}
+                        name="itrFiled"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                ITR Filed for Last Financial Year
+                                </FormLabel>
+                            </div>
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                        />
+                     <FormField
+                        control={form.control}
+                        name="taxExemption"
+                        render={({ field }) => (
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-4">
+                            <div className="space-y-0.5">
+                                <FormLabel className="text-base">
+                                Tax Exemption
+                                </FormLabel>
+                                <FormDescription>
+                                Is the vendor exempt from tax deductions?
+                                </FormDescription>
+                            </div>
+                            <FormControl>
+                                <Checkbox
+                                checked={field.value}
+                                onCheckedChange={field.onChange}
+                                />
+                            </FormControl>
+                            </FormItem>
+                        )}
+                    />
+                    {!form.watch('taxExemption') ? (
+                         <FormField
+                            control={form.control}
+                            name="tdsRate"
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>TDS Rate (%)</FormLabel>
+                                <FormControl>
+                                    <Input type="number" placeholder="Enter TDS rate" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                         />
+                    ) : (
+                        <div className="space-y-4 rounded-md border p-4">
+                            <p className="font-medium text-sm">TDS Exemption Details</p>
+                             <FormField
+                                control={form.control}
+                                name="tdsExemptionCertificateNumber"
+                                render={({ field }) => (
+                                    <FormItem>
+                                    <FormLabel>TDS Exemption Certificate Number</FormLabel>
+                                    <FormControl>
+                                        <Input placeholder="Certificate Number" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                    </FormItem>
+                                )}
+                            />
+                            <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                                <FormField
+                                    control={form.control}
+                                    name="tdsExemptionFromDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Exemption From Date</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value ? (
+                                                format(field.value, "PPP")
+                                                ) : (
+                                                <span>Pick a date</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            disabled={(date) =>
+                                                date > new Date() || date < new Date("1900-01-01")
+                                            }
+                                            initialFocus
+                                            />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                                <FormField
+                                    control={form.control}
+                                    name="tdsExemptionToDate"
+                                    render={({ field }) => (
+                                    <FormItem className="flex flex-col">
+                                        <FormLabel>Exemption To Date</FormLabel>
+                                        <Popover>
+                                        <PopoverTrigger asChild>
+                                            <FormControl>
+                                            <Button
+                                                variant={"outline"}
+                                                className={cn(
+                                                "w-full pl-3 text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                                )}
+                                            >
+                                                {field.value ? (
+                                                format(field.value, "PPP")
+                                                ) : (
+                                                <span>Pick a date</span>
+                                                )}
+                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                            </Button>
+                                            </FormControl>
+                                        </PopoverTrigger>
+                                        <PopoverContent className="w-auto p-0" align="start">
+                                            <Calendar
+                                            mode="single"
+                                            selected={field.value}
+                                            onSelect={field.onChange}
+                                            disabled={(date) =>
+                                                date > new Date("2100-01-01") || date < new Date()
+                                            }
+                                            initialFocus
+                                            />
+                                        </PopoverContent>
+                                        </Popover>
+                                        <FormMessage />
+                                    </FormItem>
+                                    )}
+                                />
+                            </div>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        )}
+
         {currentStep === 4 && (
+             <Card>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2">
+                        <FileSignature className="text-primary" />
+                        Agreement Details
+                    </CardTitle>
+                    <CardDescription>
+                        Provide the start and end dates for the agreement.
+                    </CardDescription>
+                </CardHeader>
+                <CardContent className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                     <FormField
+                        control={form.control}
+                        name="agreementStartDate"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Agreement Start Date</FormLabel>
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    {field.value ? (
+                                    format(field.value, "PPP")
+                                    ) : (
+                                    <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                                />
+                            </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                     <FormField
+                        control={form.control}
+                        name="agreementEndDate"
+                        render={({ field }) => (
+                        <FormItem className="flex flex-col">
+                            <FormLabel>Agreement End Date</FormLabel>
+                            <Popover>
+                            <PopoverTrigger asChild>
+                                <FormControl>
+                                <Button
+                                    variant={"outline"}
+                                    className={cn(
+                                    "w-full pl-3 text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                    )}
+                                >
+                                    {field.value ? (
+                                    format(field.value, "PPP")
+                                    ) : (
+                                    <span>Pick a date</span>
+                                    )}
+                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
+                                </Button>
+                                </FormControl>
+                            </PopoverTrigger>
+                            <PopoverContent className="w-auto p-0" align="start">
+                                <Calendar
+                                mode="single"
+                                selected={field.value}
+                                onSelect={field.onChange}
+                                initialFocus
+                                />
+                            </PopoverContent>
+                            </Popover>
+                            <FormMessage />
+                        </FormItem>
+                        )}
+                    />
+                </CardContent>
+            </Card>
+        )}
+
+        {currentStep === 5 && (
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
@@ -731,30 +1226,36 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <FormField
-                control={form.control}
-                name="registrationCertificate"
-                render={({ field }) => (
-                  <DocumentUploadItem
-                    field={field}
-                    label="Registration Certificate"
-                  />
-                )}
+              <DocumentUploadItem
+                field={form.control.register('registrationCertificate')}
+                label="Registration Certificate"
               />
-              <FormField
-                control={form.control}
-                name="panCard"
-                render={({ field }) => (
-                  <DocumentUploadItem field={field} label="PAN Card Copy" />
-                )}
+              <DocumentUploadItem
+                field={form.control.register('panCard')}
+                label="PAN Card Copy"
               />
-              <FormField
-                control={form.control}
-                name="addressProof"
-                render={({ field }) => (
-                  <DocumentUploadItem field={field} label="Address Proof" />
-                )}
+              <DocumentUploadItem
+                field={form.control.register('addressProof')}
+                label="Address Proof"
               />
+              {form.watch('itrFiled') && (
+                <DocumentUploadItem
+                    field={form.control.register('itrProof')}
+                    label="ITR Proof"
+                />
+              )}
+               {form.watch('registeredUnderMsme') && (
+                <DocumentUploadItem
+                    field={form.control.register('msmeCertificate')}
+                    label="MSME Certificate"
+                />
+              )}
+               {form.watch('taxExemption') && (
+                <DocumentUploadItem
+                    field={form.control.register('tdsExemptionCertificate')}
+                    label="TDS Exemption Certificate"
+                />
+              )}
             </CardContent>
           </Card>
         )}
@@ -797,3 +1298,5 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     </Form>
   );
 }
+
+    
