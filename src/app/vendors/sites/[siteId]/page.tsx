@@ -1,3 +1,4 @@
+
 import { mockVendors } from '@/lib/vendors';
 import {
   Card,
@@ -25,6 +26,9 @@ import {
   Download,
   ShieldCheck,
   Database,
+  Receipt,
+  FileSignature,
+  Users,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -201,6 +205,9 @@ export default function SiteDetailsPage({
               label="Contact Person"
               value={site.contactPerson}
             />
+             {site.departmentName && (
+              <InfoItem icon={Briefcase} label="Department" value={site.departmentName} />
+            )}
             <InfoItem
               icon={Mail}
               label="Contact Email"
@@ -234,21 +241,23 @@ export default function SiteDetailsPage({
               label="Account Number"
               value={site.accountNumber}
             />
+             <InfoItem icon={Briefcase} label="Account Type" value={site.accountType} />
             <InfoItem icon={FileText} label="IFSC Code" value={site.ifscCode} />
             <InfoItem
               icon={Building2}
               label="Branch Name"
               value={site.branchName}
             />
+            {site.crn && <InfoItem icon={Hash} label="CRN" value={site.crn} />}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
+       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Briefcase className="text-primary" />
-            Business Attributes
+            Business & Compliance
           </CardTitle>
         </CardHeader>
         <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -267,8 +276,102 @@ export default function SiteDetailsPage({
             label="Payment Frequency"
             value={site.paymentFrequency}
           />
+           {site.paygroup && (
+            <InfoItem icon={Users} label="Paygroup" value={site.paygroup} />
+          )}
+          {site.groupCode && (
+            <InfoItem icon={Hash} label="Group Code" value={site.groupCode} />
+          )}
+          <InfoItem
+            icon={ShieldCheck}
+            label="Composite GST Scheme"
+            value={site.composite ? 'Yes' : 'No'}
+          />
+          <InfoItem
+            icon={ShieldCheck}
+            label="E-Invoice Required"
+            value={site.eInvoiceRequired ? 'Yes' : 'No'}
+          />
+          <InfoItem
+            icon={ShieldCheck}
+            label="Registered under MSME"
+            value={site.registeredUnderMsme ? 'Yes' : 'No'}
+          />
+          {site.registeredUnderMsme && site.msmeRegistrationNumber && (
+            <InfoItem
+              icon={Hash}
+              label="MSME Number"
+              value={site.msmeRegistrationNumber}
+            />
+          )}
         </CardContent>
       </Card>
+      
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Receipt className="text-primary" />
+            Tax Information
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+             <InfoItem
+              icon={ShieldCheck}
+              label="PAN linked with Aadhaar"
+              value={vendor.panLinkedWithAadhar ? 'Yes' : 'No'}
+            />
+            <InfoItem
+              icon={ShieldCheck}
+              label="ITR Filed for Last FY"
+              value={site.itrFiled ? 'Yes' : 'No'}
+            />
+          </div>
+          <Separator />
+          <InfoItem
+            icon={ShieldCheck}
+            label="Tax Exemption"
+            value={site.taxExemption ? 'Yes' : 'No'}
+          />
+          {site.taxExemption ? (
+             <div className="space-y-4 rounded-md border p-4">
+              <p className="font-medium text-sm">TDS Exemption Details</p>
+                {site.tdsExemptionCertificateNumber && <InfoItem icon={FileText} label="Certificate Number" value={site.tdsExemptionCertificateNumber} />}
+                {site.tdsExemptionFromDate && <InfoItem icon={Calendar} label="Exemption From" value={site.tdsExemptionFromDate} />}
+                {site.tdsExemptionToDate && <InfoItem icon={Calendar} label="Exemption To" value={site.tdsExemptionToDate} />}
+             </div>
+          ) : (
+            site.tdsRate && <InfoItem icon={Banknote} label="TDS Rate" value={site.tdsRate} />
+          )}
+        </CardContent>
+      </Card>
+
+      {(site.agreementStartDate || site.agreementEndDate) && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileSignature className="text-primary" />
+              Agreement Details
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="grid grid-cols-1 gap-6 sm:grid-cols-2">
+            {site.agreementStartDate && (
+              <InfoItem
+                icon={Calendar}
+                label="Agreement Start Date"
+                value={site.agreementStartDate}
+              />
+            )}
+            {site.agreementEndDate && (
+              <InfoItem
+                icon={Calendar}
+                label="Agreement End Date"
+                value={site.agreementEndDate}
+              />
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {(site.oracleVendorId || site.oracleSiteId) && (
         <Card>
@@ -314,6 +417,9 @@ export default function SiteDetailsPage({
           <DocumentItem label="Registration Certificate" fileName={site.registrationCertificate} />
           <DocumentItem label="PAN Card Copy" fileName={site.panCard} />
           <DocumentItem label="Address Proof" fileName={site.addressProof} />
+          {site.itrFiled && <DocumentItem label="ITR Proof" fileName={site.itrProof} />}
+          {site.registeredUnderMsme && <DocumentItem label="MSME Certificate" fileName={site.msmeCertificate} />}
+          {site.taxExemption && <DocumentItem label="TDS Exemption Certificate" fileName={site.tdsExemptionCertificate} />}
         </CardContent>
       </Card>
     </main>

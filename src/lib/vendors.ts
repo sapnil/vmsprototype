@@ -13,6 +13,7 @@ export type Site = {
   isActive: boolean;
   bankName: string;
   accountNumber: string;
+  accountType: 'savings' | 'current';
   ifscCode: string;
   branchName: string;
   natureOfBusiness: string;
@@ -23,6 +24,26 @@ export type Site = {
   addressProof?: string;
   oracleVendorId?: string;
   oracleSiteId?: string;
+
+  departmentName?: string;
+  composite?: boolean;
+  eInvoiceRequired?: boolean;
+  registeredUnderMsme?: boolean;
+  msmeRegistrationNumber?: string;
+  paygroup?: string;
+  groupCode?: string;
+  crn?: string;
+  taxExemption?: boolean;
+  tdsRate?: string;
+  tdsExemptionCertificateNumber?: string;
+  tdsExemptionFromDate?: string;
+  tdsExemptionToDate?: string;
+  itrFiled?: boolean;
+  agreementStartDate?: string;
+  agreementEndDate?: string;
+  itrProof?: string;
+  msmeCertificate?: string;
+  tdsExemptionCertificate?: string;
 };
 
 export type Vendor = {
@@ -31,6 +52,7 @@ export type Vendor = {
   panNumber: string;
   sites: Site[];
   isActive: boolean;
+  panLinkedWithAadhar?: boolean;
 };
 
 export const mockVendors: Vendor[] = [
@@ -39,6 +61,7 @@ export const mockVendors: Vendor[] = [
     tradeName: 'Innovate Supplies',
     panNumber: 'AABCDE1234F',
     isActive: true,
+    panLinkedWithAadhar: true,
     sites: [
       {
         id: 'SITE001',
@@ -54,6 +77,7 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'HDFC Bank',
         accountNumber: '50100123456789',
+        accountType: 'current',
         ifscCode: 'HDFC0000123',
         branchName: 'Koramangala',
         natureOfBusiness: 'Service Provider',
@@ -64,6 +88,21 @@ export const mockVendors: Vendor[] = [
         addressProof: 'innovate_address_proof.pdf',
         oracleVendorId: 'ORA-VEN-1001',
         oracleSiteId: 'ORA-SITE-2001',
+        departmentName: 'Procurement',
+        composite: false,
+        eInvoiceRequired: true,
+        registeredUnderMsme: true,
+        msmeRegistrationNumber: 'UDYAM-KA-01-0000001',
+        paygroup: 'CORP_SERV',
+        groupCode: 'CS_GEN',
+        crn: 'CRN123456789',
+        taxExemption: false,
+        tdsRate: '2%',
+        itrFiled: true,
+        agreementStartDate: '2023-04-01',
+        agreementEndDate: '2025-03-31',
+        itrProof: 'innovate_itr_2023.pdf',
+        msmeCertificate: 'innovate_msme.pdf',
       },
     ],
   },
@@ -72,6 +111,7 @@ export const mockVendors: Vendor[] = [
     tradeName: 'Quantum Solutions',
     panNumber: 'BBCDE1234F',
     isActive: true,
+    panLinkedWithAadhar: false,
     sites: [
       {
         id: 'SITE002',
@@ -88,12 +128,19 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'ICICI Bank',
         accountNumber: '000101234567',
+        accountType: 'current',
         ifscCode: 'ICIC0000001',
         branchName: 'Bandra Kurla Complex',
         natureOfBusiness: 'Manufacturer',
         natureOfExpense: 'Raw Material',
         paymentFrequency: 'Per Invoice',
         registrationCertificate: 'quantum_solutions_reg.pdf',
+        taxExemption: true,
+        tdsExemptionCertificateNumber: 'TDS-EX-CERT-555',
+        tdsExemptionFromDate: '2023-04-01',
+        tdsExemptionToDate: '2024-03-31',
+        tdsExemptionCertificate: 'quantum_tds_exempt.pdf',
+        itrFiled: false,
       },
     ],
   },
@@ -102,6 +149,7 @@ export const mockVendors: Vendor[] = [
     tradeName: 'GreenScape Services',
     panNumber: 'CCDE1234F',
     isActive: true,
+    panLinkedWithAadhar: true,
     sites: [
       {
         id: 'SITE003',
@@ -117,6 +165,7 @@ export const mockVendors: Vendor[] = [
         isActive: false,
         bankName: 'Axis Bank',
         accountNumber: '912345678901',
+        accountType: 'savings',
         ifscCode: 'UTIB0000001',
         branchName: 'Cyber City',
         natureOfBusiness: 'Service Provider',
@@ -124,6 +173,10 @@ export const mockVendors: Vendor[] = [
         paymentFrequency: 'Rent',
         panCard: 'greenscape_pan.pdf',
         addressProof: 'greenscape_address.pdf',
+        itrFiled: true,
+        itrProof: 'greenscape_itr.pdf',
+        composite: true,
+        eInvoiceRequired: false,
       },
     ],
   },
@@ -132,6 +185,7 @@ export const mockVendors: Vendor[] = [
     tradeName: 'TechGenix',
     panNumber: 'DDECDE1234F',
     isActive: false,
+    panLinkedWithAadhar: true,
     sites: [
       {
         id: 'SITE004',
@@ -147,6 +201,7 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'Kotak Mahindra Bank',
         accountNumber: '123456789012',
+        accountType: 'current',
         ifscCode: 'KKBK0000123',
         branchName: 'Connaught Place',
         natureOfBusiness: 'Trader',
@@ -180,6 +235,7 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'State Bank of India',
         accountNumber: '10987654321',
+        accountType: 'current',
         ifscCode: 'SBIN0000123',
         branchName: 'Port Branch',
         natureOfBusiness: 'Service Provider',
@@ -206,6 +262,7 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'State Bank of India',
         accountNumber: '10987654321',
+        accountType: 'current',
         ifscCode: 'SBIN0000456',
         branchName: 'Industrial Area Branch',
         natureOfBusiness: 'Service Provider',
@@ -234,6 +291,7 @@ export const mockVendors: Vendor[] = [
         isActive: true,
         bankName: 'Yes Bank',
         accountNumber: '0123456789012',
+        accountType: 'savings',
         ifscCode: 'YESB0000123',
         branchName: 'Hauz Khas',
         natureOfBusiness: 'Service Provider',
