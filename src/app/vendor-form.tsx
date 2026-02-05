@@ -21,6 +21,8 @@ import {
   Receipt,
   FileSignature,
   CalendarIcon,
+  Banknote,
+  ShieldAlert,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -51,7 +53,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
-import { handleGstAutofill } from '@/app/actions';
+import { handleGstAutofill, handlePennyDropVerification } from '@/app/actions';
 import { cn } from '@/lib/utils';
 import { mockVendors } from '@/lib/vendors';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -61,6 +63,9 @@ import {
 } from '@/components/ui/radio-group';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Badge } from '@/components/ui/badge';
+
 
 const formSchema = z.object({
   // Contact & Identity
@@ -101,6 +106,7 @@ const formSchema = z.object({
     required_error: 'You need to select an account type.',
   }),
   ifscCode: z.string().length(11, 'IFSC code must be 11 characters.'),
+  beneficiaryName: z.string().optional(),
   crn: z.string().optional(),
 
   // Tax Information
@@ -118,6 +124,7 @@ const formSchema = z.object({
   // Document Upload
   registrationCertificate: z.any().optional(),
   panCard: z.any().optional(),
+  cancelledCheque: z.any().optional(),
   addressProof: z.any().optional(),
   itrProof: z.any().optional(),
   msmeCertificate: z.any().optional(),
@@ -160,7 +167,7 @@ const steps = [
   {
     id: 'Bank Details',
     icon: Landmark,
-    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName', 'accountType'],
+    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName', 'accountType', 'beneficiaryName'],
   },
   {
     id: 'Tax Information',
@@ -182,6 +189,7 @@ const steps = [
       'itrProof',
       'msmeCertificate',
       'tdsExemptionCertificate',
+      'cancelledCheque',
     ],
   },
 ];
@@ -235,6 +243,13 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
 
+  // Penny-drop verification state
+  const [isVerifying, setIsVerifying] = useState(false);
+  const [bankVerificationStatus, setBankVerificationStatus] = useState<
+    'idle' | 'success' | 'failed'
+  >('idle');
+  const [verificationMessage, setVerificationMessage] = useState('');
+
   const isNewSiteFlow = !!vendorId;
   const vendor = isNewSiteFlow
     ? mockVendors.find((v) => v.id === vendorId)
@@ -263,6 +278,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
       ifscCode: 'TEST0001234',
       branchName: 'Test Branch',
       accountType: 'current',
+      beneficiaryName: '',
       panLinkedWithAadhar: true,
       composite: false,
       eInvoiceRequired: true,
@@ -305,7 +321,64 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     }
   };
 
+   const onVerifyBankAccount = async () => {
+    const output = await form.trigger(['accountNumber', 'ifscCode']);
+    if (!output) return;
+
+    const accountNumber = form.getValues('accountNumber');
+    const ifscCode = form.getValues('ifscCode');
+
+    setIsVerifying(true);
+    setBankVerificationStatus('idle');
+    setVerificationMessage('');
+
+    const { success, message, beneficiaryName, error } =
+      await handlePennyDropVerification(accountNumber, ifscCode);
+
+    setIsVerifying(false);
+
+    if (error) {
+      setBankVerificationStatus('failed');
+      setVerificationMessage(error);
+       toast({
+        variant: 'destructive',
+        title: 'Verification Error',
+        description: error,
+      });
+      return;
+    }
+    
+    setVerificationMessage(message);
+    if (success) {
+      setBankVerificationStatus('success');
+      form.setValue('beneficiaryName', beneficiaryName, { shouldValidate: true });
+       toast({
+        title: 'Verification Successful',
+        description: message,
+        className: 'bg-accent text-accent-foreground border-accent',
+      });
+    } else {
+      setBankVerificationStatus('failed');
+      form.setValue('beneficiaryName', '');
+      toast({
+        variant: 'destructive',
+        title: 'Verification Failed',
+        description: message,
+      });
+    }
+  };
+
   const onSubmit = async (values: VendorFormValues) => {
+     if (bankVerificationStatus === 'failed' && !values.cancelledCheque) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Document',
+        description: 'Bank verification failed. Please upload a cancelled cheque copy to proceed.',
+      });
+      setCurrentStep(steps.findIndex(step => step.id === 'Document Upload'));
+      return;
+    }
+    
     setIsSubmitting(true);
     // In a real app, you would handle file uploads and send data to your backend.
     console.log(values);
@@ -841,12 +914,102 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                 Bank Details
               </CardTitle>
               <CardDescription>
-                Provide your bank account details for payments.
+                Provide and verify your bank account details for payments.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
+              <div className="space-y-4 rounded-md border p-4">
+                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                  <FormField
+                    control={form.control}
+                    name="accountNumber"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Account Number</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder="Enter your account number"
+                            {...field}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="ifscCode"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>IFSC Code</FormLabel>
+                        <FormControl>
+                          <Input placeholder="e.g. SBIN0001234" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <Button
+                  type="button"
+                  onClick={onVerifyBankAccount}
+                  disabled={isVerifying}
+                  className="w-full sm:w-auto"
+                >
+                  {isVerifying ? (
+                    <LoaderCircle className="animate-spin" />
+                  ) : (
+                    <Banknote />
+                  )}
+                  Verify Account
+                </Button>
+                {bankVerificationStatus !== 'idle' && (
+                   <Alert
+                    variant={
+                      bankVerificationStatus === 'success'
+                        ? 'default'
+                        : 'destructive'
+                    }
+                    className={cn(
+                      bankVerificationStatus === 'success' &&
+                        'border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-300 [&>svg]:text-green-600'
+                    )}
+                  >
+                    {bankVerificationStatus === 'success' ? (
+                      <ShieldCheck />
+                    ) : (
+                      <ShieldAlert />
+                    )}
+                    <AlertTitle>
+                      {bankVerificationStatus === 'success'
+                        ? 'Verification Successful'
+                        : 'Verification Failed'}
+                    </AlertTitle>
+                    <AlertDescription>{verificationMessage}</AlertDescription>
+                  </Alert>
+                )}
+              </div>
+              
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
                 <FormField
+                  control={form.control}
+                  name="beneficiaryName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Beneficiary Name (as per bank)</FormLabel>
+                      <FormControl>
+                        <Input
+                          placeholder="Verified account holder name"
+                          {...field}
+                          readOnly
+                          className="bg-muted"
+                        />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                 <FormField
                     control={form.control}
                     name="bankName"
                     render={({ field }) => (
@@ -867,32 +1030,6 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                         <FormLabel>Branch Name</FormLabel>
                         <FormControl>
                         <Input placeholder="e.g. Main Branch, Delhi" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="accountNumber"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Account Number</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Enter your account number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="ifscCode"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>IFSC Code</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g. SBIN0001234" {...field} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -1227,6 +1364,20 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
+              {bankVerificationStatus !== 'success' && (
+                <div className="relative">
+                  <DocumentUploadItem
+                    field={form.control.register('cancelledCheque')}
+                    label="Cancelled Cheque Copy"
+                  />
+                  {bankVerificationStatus === 'failed' && (
+                    <Badge variant="destructive" className="absolute -top-2 -right-2">Required</Badge>
+                  )}
+                   <FormDescription className="pt-2">
+                    A cancelled cheque is required because bank account verification failed.
+                  </FormDescription>
+                </div>
+              )}
               <DocumentUploadItem
                 field={form.control.register('registrationCertificate')}
                 label="Registration Certificate"
@@ -1299,5 +1450,3 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     </Form>
   );
 }
-
-    

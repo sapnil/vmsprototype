@@ -5,6 +5,7 @@ import {
   prefillVendorDetailsFromGST,
   type PrefillVendorDetailsFromGSTOutput,
 } from '@/ai/flows/prefill-vendor-details-from-gst';
+import { verifyBankAccount } from '@/services/penny-drop-api';
 
 export async function handleGstAutofill(
   gstNumber: string
@@ -22,6 +23,28 @@ export async function handleGstAutofill(
       data: null,
       error:
         'Failed to fetch details. Please check the GST number and try again.',
+    };
+  }
+}
+
+export async function handlePennyDropVerification(
+  accountNumber: string,
+  ifscCode: string
+): Promise<{ success: boolean; message: string; beneficiaryName: string; error: string | null }> {
+  if (!accountNumber || !ifscCode) {
+    return { success: false, message: '', beneficiaryName: '', error: 'Account number and IFSC code are required.' };
+  }
+
+  try {
+    const result = await verifyBankAccount(accountNumber, ifscCode);
+    return { ...result, error: null };
+  } catch (e) {
+    console.error(e);
+    return {
+      success: false,
+      message: '',
+      beneficiaryName: '',
+      error: 'An unexpected error occurred during verification.',
     };
   }
 }
