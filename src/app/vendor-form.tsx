@@ -13,7 +13,7 @@ import {
   ShieldCheck,
   Upload,
   LoaderCircle,
-  Sparkles,
+  Search,
   ArrowRight,
   ArrowLeft,
   Check,
@@ -429,7 +429,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
 
   const handlePrevious = () => {
     if (currentStep > 0) {
-      setCurrentStep((step) => step + 1);
+      setCurrentStep((step) => step - 1);
     }
   };
 
@@ -536,9 +536,9 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   {isAutofilling ? (
                     <LoaderCircle className="animate-spin" />
                   ) : (
-                    <Sparkles />
+                    <Search />
                   )}
-                  Autofill with AI
+                  Fetch
                 </Button>
               </div>
               <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
@@ -1531,3 +1531,5 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     </Form>
   );
 }
+
+    
