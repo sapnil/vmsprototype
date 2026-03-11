@@ -29,6 +29,7 @@ import {
   Receipt,
   FileSignature,
   Users,
+  ShieldAlert,
 } from 'lucide-react';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -48,6 +49,24 @@ const activeStatusColors = {
     Active: 'bg-green-100 text-green-800 border-green-200 dark:bg-green-900/50 dark:text-green-300 dark:border-green-800',
     Inactive: 'bg-stone-100 text-stone-800 border-stone-200 dark:bg-stone-900/50 dark:text-stone-300 dark:border-stone-800',
 };
+
+const verificationStatusDetails = {
+    success: {
+        label: 'Verified',
+        icon: ShieldCheck,
+        className: 'text-green-600'
+    },
+    failed: {
+        label: 'Failed',
+        icon: ShieldAlert,
+        className: 'text-red-600'
+    },
+    idle: {
+        label: 'Pending',
+        icon: Clock,
+        className: 'text-yellow-600'
+    }
+}
 
 const InfoItem = ({
   icon: Icon,
@@ -78,8 +97,8 @@ const DocumentItem = ({
 
   return (
     <div className={cn(
-      "flex items-center justify-between gap-4 rounded-md border p-3",
-      isAvailable ? "bg-background shadow-sm" : "border-dashed bg-muted/50"
+      "flex items-center justify-between gap-4 rounded-lg border p-3",
+      isAvailable ? "bg-card shadow-sm" : "border-dashed bg-gray-50"
     )}>
       <div className="flex items-center gap-3 overflow-hidden">
         <FileText className={cn("h-6 w-6 flex-shrink-0", isAvailable ? "text-primary" : "text-muted-foreground/50")} />
@@ -140,12 +159,12 @@ export default function SiteDetailsPage({
         </Button>
       </div>
 
-      <Card>
+      <Card className="shadow-md">
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
             <div>
-              <CardTitle className="flex items-center gap-3">
-                <Building2 className="h-7 w-7 text-primary" />
+              <CardTitle className="flex items-center gap-3 text-3xl">
+                <Building2 className="h-8 w-8 text-primary" />
                 <span>{site.legalName}</span>
               </CardTitle>
               <CardDescription className="mt-1">
@@ -160,14 +179,12 @@ export default function SiteDetailsPage({
             </div>
             <div className="flex flex-wrap items-center gap-2 self-start sm:self-center">
               <Badge
-                variant="outline"
-                className={cn(statusColors[site.status])}
+                className={cn('text-sm', statusColors[site.status])}
               >
                 {site.status}
               </Badge>
               <Badge
-                variant="outline"
-                className={cn(site.isActive ? activeStatusColors.Active : activeStatusColors.Inactive)}
+                className={cn('text-sm', site.isActive ? activeStatusColors.Active : activeStatusColors.Inactive)}
               >
                 {site.isActive ? 'Active' : 'Inactive'}
               </Badge>
@@ -234,21 +251,30 @@ export default function SiteDetailsPage({
               Bank Details
             </CardTitle>
           </CardHeader>
-          <CardContent className="space-y-6">
-            <InfoItem icon={Landmark} label="Bank Name" value={site.bankName} />
-            <InfoItem
-              icon={Hash}
-              label="Account Number"
-              value={site.accountNumber}
-            />
-             <InfoItem icon={Briefcase} label="Account Type" value={site.accountType} />
-            <InfoItem icon={FileText} label="IFSC Code" value={site.ifscCode} />
-            <InfoItem
-              icon={Building2}
-              label="Branch Name"
-              value={site.branchName}
-            />
-            {site.crn && <InfoItem icon={Hash} label="CRN" value={site.crn} />}
+          <CardContent className="space-y-4">
+            {site.bankAccounts.map((account, index) => {
+                 const verification = verificationStatusDetails[account.verificationStatus];
+                 return (
+                    <div key={account.id} className="rounded-lg border p-4">
+                        <div className="flex justify-between items-start">
+                             <h4 className="font-semibold mb-2">{account.bankName}</h4>
+                             <div className={cn("flex items-center gap-1.5 text-sm font-medium", verification.className)}>
+                                <verification.icon className="h-4 w-4" />
+                                <span>{verification.label}</span>
+                             </div>
+                        </div>
+                        <div className="space-y-4 text-sm">
+                            <p><span className="text-muted-foreground">Branch:</span> {account.branchName}</p>
+                            <p><span className="text-muted-foreground">Account #:</span> {account.accountNumber}</p>
+                            <p><span className="text-muted-foreground">IFSC:</span> {account.ifscCode}</p>
+                            <p><span className="text-muted-foreground">Account Type:</span> <span className="capitalize">{account.accountType}</span></p>
+                            {account.beneficiaryName && <p><span className="text-muted-foreground">Beneficiary:</span> {account.beneficiaryName}</p>}
+                            {account.crn && <p><span className="text-muted-foreground">CRN:</span> {account.crn}</p>}
+                        </div>
+                    </div>
+                )
+            })}
+             {site.bankAccounts.length === 0 && <p className="text-sm text-muted-foreground">No bank accounts registered for this site.</p>}
           </CardContent>
         </Card>
       </div>
@@ -334,7 +360,7 @@ export default function SiteDetailsPage({
             value={site.taxExemption ? 'Yes' : 'No'}
           />
           {site.taxExemption ? (
-             <div className="space-y-4 rounded-md border p-4">
+             <div className="space-y-4 rounded-lg border p-4">
               <p className="font-medium text-sm">TDS Exemption Details</p>
                 {site.tdsExemptionCertificateNumber && <InfoItem icon={FileText} label="Certificate Number" value={site.tdsExemptionCertificateNumber} />}
                 {site.tdsExemptionFromDate && <InfoItem icon={Calendar} label="Exemption From" value={site.tdsExemptionFromDate} />}
@@ -417,6 +443,7 @@ export default function SiteDetailsPage({
           <DocumentItem label="Registration Certificate" fileName={site.registrationCertificate} />
           <DocumentItem label="PAN Card Copy" fileName={site.panCard} />
           <DocumentItem label="Address Proof" fileName={site.addressProof} />
+          <DocumentItem label="Cancelled Cheque" fileName={site.cancelledCheque} />
           {site.itrFiled && <DocumentItem label="ITR Proof" fileName={site.itrProof} />}
           {site.registeredUnderMsme && <DocumentItem label="MSME Certificate" fileName={site.msmeCertificate} />}
           {site.taxExemption && <DocumentItem label="TDS Exemption Certificate" fileName={site.tdsExemptionCertificate} />}

@@ -1,4 +1,16 @@
 
+export type BankAccount = {
+  id: string;
+  bankName: string;
+  branchName: string;
+  accountNumber: string;
+  accountType: 'savings' | 'current';
+  ifscCode: string;
+  beneficiaryName: string;
+  verificationStatus: 'idle' | 'success' | 'failed';
+  crn?: string;
+};
+
 export type Site = {
   id: string;
   gstNumber: string;
@@ -11,11 +23,7 @@ export type Site = {
   dateAdded: string;
   status: 'Approved' | 'Pending' | 'Rejected';
   isActive: boolean;
-  bankName: string;
-  accountNumber: string;
-  accountType: 'savings' | 'current';
-  ifscCode: string;
-  branchName: string;
+  bankAccounts: BankAccount[];
   natureOfBusiness: string;
   natureOfExpense: string;
   paymentFrequency: string;
@@ -32,7 +40,6 @@ export type Site = {
   msmeRegistrationNumber?: string;
   paygroup?: string;
   groupCode?: string;
-  crn?: string;
   taxExemption?: boolean;
   tdsRate?: string;
   tdsExemptionCertificateNumber?: string;
@@ -44,6 +51,7 @@ export type Site = {
   itrProof?: string;
   msmeCertificate?: string;
   tdsExemptionCertificate?: string;
+  cancelledCheque?: string;
 };
 
 export type Vendor = {
@@ -75,11 +83,19 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-10-15',
         status: 'Approved',
         isActive: true,
-        bankName: 'HDFC Bank',
-        accountNumber: '50100123456789',
-        accountType: 'current',
-        ifscCode: 'HDFC0000123',
-        branchName: 'Koramangala',
+        bankAccounts: [
+          {
+            id: 'BANK001',
+            bankName: 'HDFC Bank',
+            branchName: 'Koramangala',
+            accountNumber: '50100123456789',
+            accountType: 'current',
+            ifscCode: 'HDFC0000123',
+            beneficiaryName: 'Innovate Supplies Pvt. Ltd.',
+            verificationStatus: 'success',
+            crn: 'CRN123456789',
+          },
+        ],
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Monthly',
@@ -95,7 +111,6 @@ export const mockVendors: Vendor[] = [
         msmeRegistrationNumber: 'UDYAM-KA-01-0000001',
         paygroup: 'CORP_SERV',
         groupCode: 'CS_GEN',
-        crn: 'CRN123456789',
         taxExemption: false,
         tdsRate: '2%',
         itrFiled: true,
@@ -126,11 +141,18 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-11-01',
         status: 'Pending',
         isActive: true,
-        bankName: 'ICICI Bank',
-        accountNumber: '000101234567',
-        accountType: 'current',
-        ifscCode: 'ICIC0000001',
-        branchName: 'Bandra Kurla Complex',
+        bankAccounts: [
+            {
+                id: 'BANK002',
+                bankName: 'ICICI Bank',
+                branchName: 'Bandra Kurla Complex',
+                accountNumber: '000101234567',
+                accountType: 'current',
+                ifscCode: 'ICIC0000001',
+                beneficiaryName: '',
+                verificationStatus: 'idle'
+            }
+        ],
         natureOfBusiness: 'Manufacturer',
         natureOfExpense: 'Raw Material',
         paymentFrequency: 'Per Invoice',
@@ -163,11 +185,18 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-09-20',
         status: 'Approved',
         isActive: false,
-        bankName: 'Axis Bank',
-        accountNumber: '912345678901',
-        accountType: 'savings',
-        ifscCode: 'UTIB0000001',
-        branchName: 'Cyber City',
+        bankAccounts: [
+            {
+                id: 'BANK003',
+                bankName: 'Axis Bank',
+                branchName: 'Cyber City',
+                accountNumber: '912345678901',
+                accountType: 'savings',
+                ifscCode: 'UTIB0000001',
+                beneficiaryName: '',
+                verificationStatus: 'idle'
+            }
+        ],
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Rent',
         paymentFrequency: 'Rent',
@@ -199,11 +228,19 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-11-05',
         status: 'Rejected',
         isActive: true,
-        bankName: 'Kotak Mahindra Bank',
-        accountNumber: '123456789012',
-        accountType: 'current',
-        ifscCode: 'KKBK0000123',
-        branchName: 'Connaught Place',
+        bankAccounts: [
+             {
+                id: 'BANK004',
+                bankName: 'Kotak Mahindra Bank',
+                branchName: 'Connaught Place',
+                accountNumber: '123456789012',
+                accountType: 'current',
+                ifscCode: 'KKBK0000123',
+                beneficiaryName: 'TechGenix Systems',
+                verificationStatus: 'failed',
+                cancelledCheque: 'techgenix_cheque.pdf'
+            }
+        ],
         natureOfBusiness: 'Trader',
         natureOfExpense: 'Capital Goods',
         paymentFrequency: 'Annually',
@@ -233,11 +270,28 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-08-12',
         status: 'Approved',
         isActive: true,
-        bankName: 'State Bank of India',
-        accountNumber: '10987654321',
-        accountType: 'current',
-        ifscCode: 'SBIN0000123',
-        branchName: 'Port Branch',
+        bankAccounts: [
+            {
+                id: 'BANK005',
+                bankName: 'State Bank of India',
+                branchName: 'Port Branch',
+                accountNumber: '10987654321',
+                accountType: 'current',
+                ifscCode: 'SBIN0000123',
+                beneficiaryName: 'Apex Global Logistics',
+                verificationStatus: 'success',
+            },
+            {
+                id: 'BANK006',
+                bankName: 'Bank of Baroda',
+                branchName: 'Main Branch',
+                accountNumber: '00001234567',
+                accountType: 'current',
+                ifscCode: 'BARB0MUMBAI',
+                beneficiaryName: '',
+                verificationStatus: 'failed',
+            }
+        ],
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Monthly',
@@ -246,6 +300,7 @@ export const mockVendors: Vendor[] = [
         addressProof: 'apex_chennai_address.pdf',
         oracleVendorId: 'ORA-VEN-1005',
         oracleSiteId: 'ORA-SITE-2005',
+        cancelledCheque: 'apex_cancelled_cheque.pdf',
       },
       {
         id: 'SITE006',
@@ -260,11 +315,18 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-11-12',
         status: 'Pending',
         isActive: true,
-        bankName: 'State Bank of India',
-        accountNumber: '10987654321',
-        accountType: 'current',
-        ifscCode: 'SBIN0000456',
-        branchName: 'Industrial Area Branch',
+        bankAccounts: [
+            {
+                id: 'BANK007',
+                bankName: 'State Bank of India',
+                branchName: 'Industrial Area Branch',
+                accountNumber: '10987654321',
+                accountType: 'current',
+                ifscCode: 'SBIN0000456',
+                beneficiaryName: '',
+                verificationStatus: 'idle',
+            }
+        ],
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',
@@ -289,11 +351,18 @@ export const mockVendors: Vendor[] = [
         dateAdded: '2023-11-10',
         status: 'Pending',
         isActive: true,
-        bankName: 'Yes Bank',
-        accountNumber: '0123456789012',
-        accountType: 'savings',
-        ifscCode: 'YESB0000123',
-        branchName: 'Hauz Khas',
+        bankAccounts: [
+             {
+                id: 'BANK008',
+                bankName: 'Yes Bank',
+                branchName: 'Hauz Khas',
+                accountNumber: '0123456789012',
+                accountType: 'savings',
+                ifscCode: 'YESB0000123',
+                beneficiaryName: '',
+                verificationStatus: 'idle',
+            }
+        ],
         natureOfBusiness: 'Service Provider',
         natureOfExpense: 'Services',
         paymentFrequency: 'Per Invoice',

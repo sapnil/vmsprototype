@@ -54,8 +54,9 @@ const uploadFormSchema = z.object({
         [
           'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
           'application/vnd.ms-excel',
+          'text/csv'
         ].includes(files?.[0]?.type),
-      'Only .xlsx and .xls files are accepted.'
+      'Only .xlsx, .xls, and .csv files are accepted.'
     ),
 });
 type UploadFormValues = z.infer<typeof uploadFormSchema>;
@@ -75,7 +76,6 @@ type ManualUpdateFormValues = z.infer<typeof manualUpdateFormSchema>;
 type ExcelRecord = {
   PAN_Number: string;
   GST_Number: string;
-  Bank_Account_Number: string;
   Oracle_Vendor_ID: string;
   Oracle_Site_ID: string;
   rowNumber: number;
@@ -127,15 +127,13 @@ export default function UpdateExternalIdsPage() {
       {
         PAN_Number: 'CCDE1234F', // This PAN matches GreenScape Services
         GST_Number: '36CCDE1234F1Z5',
-        Bank_Account_Number: '912345678901', // This now matches GreenScape's account number
         Oracle_Vendor_ID: 'EXL-VEN-901',
-        Oracle_Site_ID: 'EXL-SITE-901', // This will be ignored for the manual update part
+        Oracle_Site_ID: 'EXL-SITE-901',
         rowNumber: 5,
       },
       {
         PAN_Number: 'XYZ-PAN-404', // This PAN does not match any VMS record needing update
         GST_Number: '00NOTFOUND00000F0Z0',
-        Bank_Account_Number: '0000000000',
         Oracle_Vendor_ID: 'EXL-VEN-404',
         Oracle_Site_ID: 'EXL-SITE-404',
         rowNumber: 10,
@@ -184,8 +182,7 @@ export default function UpdateExternalIdsPage() {
         const excelRecord = excelRecordsToMap.find(
           (rec) =>
             rec.PAN_Number === vmsSite.vendorPan &&
-            rec.GST_Number === vmsSite.gstNumber &&
-            rec.Bank_Account_Number === vmsSite.accountNumber
+            rec.GST_Number === vmsSite.gstNumber
         );
 
         return {
@@ -205,15 +202,12 @@ export default function UpdateExternalIdsPage() {
     console.log('Saving manual updates:', values);
     await new Promise((resolve) => setTimeout(resolve, 1500));
 
-    // Here you would update the actual data source.
-    // We are just simulating success.
-
     setIsProcessing(false);
     handleReset();
     toast({
       title: 'Success!',
       description: 'The Oracle External IDs have been updated manually.',
-      className: 'bg-accent text-accent-foreground border-accent',
+      className: 'bg-green-100 text-green-900 border-green-200',
     });
   };
 
@@ -226,16 +220,24 @@ export default function UpdateExternalIdsPage() {
 
   return (
     <main className="container mx-auto max-w-7xl px-4 py-10">
+       <div className="mb-8">
+        <h1 className="text-3xl font-bold tracking-tight">
+          Update Oracle External IDs
+        </h1>
+        <p className="text-muted-foreground">
+          Bulk update Oracle Vendor and Site IDs for registered sites.
+        </p>
+      </div>
+
       {view === 'upload' && (
-        <Card>
+        <Card className="shadow-md">
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
               <UploadCloud className="text-primary" />
-              Update Oracle External IDs
+              Upload File
             </CardTitle>
             <CardDescription>
-              Upload an Excel file to bulk update Oracle Vendor and Site IDs for
-              registered sites. If any records can't be matched, you'll be able
+              If any records can't be matched automatically, you'll be able
               to map them manually.
             </CardDescription>
           </CardHeader>
@@ -244,16 +246,15 @@ export default function UpdateExternalIdsPage() {
               <ListChecks className="h-4 w-4" />
               <AlertTitle>Excel File Requirements</AlertTitle>
               <AlertDescription>
-                <p>Your Excel file must contain the following columns:</p>
+                <p>Your Excel or CSV file must contain the following columns:</p>
                 <ul className="my-2 list-inside list-disc space-y-1 pl-2 font-mono text-sm">
                   <li>PAN_Number</li>
                   <li>GST_Number</li>
-                  <li>Bank_Account_Number</li>
                   <li>Oracle_Vendor_ID</li>
                   <li>Oracle_Site_ID</li>
                 </ul>
                 <p>
-                  The combination of PAN, GST, and Bank Account number is used
+                  The combination of PAN and GST number is used
                   to uniquely identify and update a site.
                 </p>
               </AlertDescription>
@@ -270,17 +271,17 @@ export default function UpdateExternalIdsPage() {
                   name="file"
                   render={({ field: { onChange, ...fieldProps } }) => (
                     <FormItem>
-                      <FormLabel>Excel File Upload</FormLabel>
+                      <FormLabel>File Upload</FormLabel>
                       <FormControl>
                         <Input
                           type="file"
-                          accept=".xlsx, .xls"
+                          accept=".xlsx, .xls, .csv"
                           placeholder="No file selected"
                           onChange={(e) => onChange(e.target.files)}
                         />
                       </FormControl>
                       <FormDescription>
-                        Select the .xlsx or .xls file to upload.
+                        Select the .xlsx, .xls or .csv file to upload.
                       </FormDescription>
                       <FormMessage />
                     </FormItem>
@@ -318,7 +319,7 @@ export default function UpdateExternalIdsPage() {
               className="space-y-6"
             >
               <div className="grid grid-cols-1 gap-8 lg:grid-cols-2">
-                <Card className="lg:col-span-1">
+                <Card className="lg:col-span-1 shadow-md">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <Hand className="text-primary" />
@@ -378,6 +379,7 @@ export default function UpdateExternalIdsPage() {
                                                 placeholder="Prefilled from file"
                                                 {...field}
                                                 readOnly
+                                                className="bg-gray-100"
                                               />
                                             </FormControl>
                                             <FormMessage />
@@ -414,15 +416,14 @@ export default function UpdateExternalIdsPage() {
                   </CardContent>
                 </Card>
 
-                <Card className="lg:col-span-1">
+                <Card className="lg:col-span-1 shadow-md">
                   <CardHeader>
                     <CardTitle className="flex items-center gap-2">
                       <FileSpreadsheet className="text-primary" />
-                      Unmapped Excel Records
+                      Matching Excel Records
                     </CardTitle>
                     <CardDescription>
-                      These records from your file could not be matched to a VMS
-                      site.
+                      These records from your file were matched by PAN and GST number.
                     </CardDescription>
                   </CardHeader>
                   <CardContent>
@@ -452,7 +453,6 @@ export default function UpdateExternalIdsPage() {
                                   </p>
                                   <div className="mt-2 space-y-1 font-mono text-xs">
                                     <p>GST: {record.GST_Number}</p>
-                                    <p>Acct #: {record.Bank_Account_Number}</p>
                                     <p>
                                       Oracle Vendor ID:{' '}
                                       {record.Oracle_Vendor_ID}
@@ -472,7 +472,7 @@ export default function UpdateExternalIdsPage() {
                 </Card>
               </div>
 
-              <CardFooter className="flex justify-end gap-4 p-0 pt-6">
+              <CardFooter className="flex justify-end gap-4 bg-background border-t p-6 mt-6 rounded-b-lg">
                 <Button
                   type="button"
                   variant="outline"

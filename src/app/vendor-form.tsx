@@ -2,7 +2,7 @@
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
+import { useForm, useFieldArray } from 'react-hook-form';
 import { z } from 'zod';
 import React, { useState } from 'react';
 import {
@@ -23,6 +23,8 @@ import {
   CalendarIcon,
   Banknote,
   ShieldAlert,
+  PlusCircle,
+  Trash2,
 } from 'lucide-react';
 import { format } from 'date-fns';
 
@@ -51,7 +53,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
 import { useToast } from '@/hooks/use-toast';
 import { handleGstAutofill, handlePennyDropVerification } from '@/app/actions';
 import { cn } from '@/lib/utils';
@@ -65,7 +66,21 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { Calendar } from '@/components/ui/calendar';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
 
+const bankAccountSchema = z.object({
+  id: z.string().optional(),
+  bankName: z.string().min(2, 'Bank name is required.'),
+  branchName: z.string().min(2, 'Branch name is required.'),
+  accountNumber: z.string().min(9, 'Account number is required.'),
+  accountType: z.enum(['savings', 'current'], {
+    required_error: 'You need to select an account type.',
+  }),
+  ifscCode: z.string().length(11, 'IFSC code must be 11 characters.'),
+  beneficiaryName: z.string().optional(),
+  crn: z.string().optional(),
+  verificationStatus: z.enum(['idle', 'success', 'failed']).default('idle'),
+});
 
 const formSchema = z.object({
   // Contact & Identity
@@ -99,15 +114,9 @@ const formSchema = z.object({
   groupCode: z.string().optional(),
 
   // Bank Details
-  bankName: z.string().min(2, 'Bank name is required.'),
-  branchName: z.string().min(2, 'Branch name is required.'),
-  accountNumber: z.string().min(9, 'Account number is required.'),
-  accountType: z.enum(['savings', 'current'], {
-    required_error: 'You need to select an account type.',
-  }),
-  ifscCode: z.string().length(11, 'IFSC code must be 11 characters.'),
-  beneficiaryName: z.string().optional(),
-  crn: z.string().optional(),
+  bankAccounts: z
+    .array(bankAccountSchema)
+    .min(1, 'At least one bank account is required.'),
 
   // Tax Information
   taxExemption: z.boolean().default(false),
@@ -167,7 +176,7 @@ const steps = [
   {
     id: 'Bank Details',
     icon: Landmark,
-    fields: ['bankName', 'accountNumber', 'ifscCode', 'branchName', 'accountType', 'beneficiaryName'],
+    fields: ['bankAccounts'],
   },
   {
     id: 'Tax Information',
@@ -204,9 +213,9 @@ const DocumentUploadItem = ({
   const [fileName, setFileName] = useState('');
 
   return (
-    <div className="flex items-center justify-between gap-4 rounded-md border bg-background p-3 shadow-sm">
+    <div className="flex items-center justify-between gap-4 rounded-md border bg-card p-3 shadow-sm">
       <div className="flex items-center gap-3 overflow-hidden">
-        <FileText className="h-6 w-6 flex-shrink-0 text-muted-foreground" />
+        <FileText className="h-6 w-6 flex-shrink-0 text-primary" />
         <div className="overflow-hidden">
           <p className="font-medium">{label}</p>
           {fileName && (
@@ -241,14 +250,8 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
   const [currentStep, setCurrentStep] = useState(0);
   const [isAutofilling, setIsAutofilling] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [verifyingAccountIndex, setVerifyingAccountIndex] = useState<number | null>(null);
   const { toast } = useToast();
-
-  // Penny-drop verification state
-  const [isVerifying, setIsVerifying] = useState(false);
-  const [bankVerificationStatus, setBankVerificationStatus] = useState<
-    'idle' | 'success' | 'failed'
-  >('idle');
-  const [verificationMessage, setVerificationMessage] = useState('');
 
   const isNewSiteFlow = !!vendorId;
   const vendor = isNewSiteFlow
@@ -259,7 +262,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     resolver: zodResolver(formSchema),
     defaultValues: {
       vendorCode: vendor?.id,
-      gstNumber: '27ABCDE1234F1Z4',
+      gstNumber: '36CCDE1234F1Z5',
       tradeName: isNewSiteFlow ? vendor?.tradeName || '' : 'Test Vendor Inc.',
       legalName: 'Test Legal Name',
       panNumber: isNewSiteFlow ? vendor?.panNumber || '' : 'ABCDE1234F',
@@ -271,14 +274,19 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
       contactPerson: 'Test Person',
       contactEmail: 'test@example.com',
       contactPhone: '9876543210',
-      natureOfService: 'service_provider',
+      natureOfService: 'rent',
       paymentFrequency: 'rent',
-      bankName: 'Test Bank of Testing',
-      accountNumber: '0987654321',
-      ifscCode: 'TEST0001234',
-      branchName: 'Test Branch',
-      accountType: 'current',
-      beneficiaryName: '',
+      bankAccounts: [
+        {
+          bankName: 'Test Bank of Testing',
+          accountNumber: '0987654321',
+          ifscCode: 'TEST0001234',
+          branchName: 'Test Branch',
+          accountType: 'current',
+          beneficiaryName: '',
+          verificationStatus: 'idle',
+        },
+      ],
       panLinkedWithAadhar: true,
       composite: false,
       eInvoiceRequired: true,
@@ -289,13 +297,22 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     },
   });
 
+  const {
+    fields: bankAccountFields,
+    append: appendBankAccount,
+    remove: removeBankAccount,
+  } = useFieldArray({
+    control: form.control,
+    name: 'bankAccounts',
+  });
+
   const onGstAutofill = async () => {
     await form.trigger('gstNumber');
     const gstNumber = form.getValues('gstNumber');
     if (form.getFieldState('gstNumber').invalid) return;
 
     setIsAutofilling(true);
-    const {data: result, error} = await handleGstAutofill(gstNumber);
+    const { data: result, error } = await handleGstAutofill(gstNumber);
     setIsAutofilling(false);
 
     if (error || !result) {
@@ -307,8 +324,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     } else {
       const { legalName, address, panNumber, registrationDate } = result;
       form.setValue('legalName', legalName, { shouldValidate: true });
-      // Assuming address is a single string from API, we put it in address1
-      form.setValue('address1', address, { shouldValidate: true }); 
+      form.setValue('address1', address, { shouldValidate: true });
       form.setValue('panNumber', panNumber, { shouldValidate: true });
       form.setValue('registrationDate', registrationDate, {
         shouldValidate: true,
@@ -316,50 +332,49 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
       toast({
         title: 'Success!',
         description: 'Vendor details have been pre-filled.',
-        className: 'bg-accent text-accent-foreground border-accent',
+        className: 'bg-green-100 text-green-900 border-green-200',
       });
     }
   };
 
-   const onVerifyBankAccount = async () => {
-    const output = await form.trigger(['accountNumber', 'ifscCode']);
+  const onVerifyBankAccount = async (index: number) => {
+    const output = await form.trigger([
+      `bankAccounts.${index}.accountNumber`,
+      `bankAccounts.${index}.ifscCode`,
+    ]);
     if (!output) return;
 
-    const accountNumber = form.getValues('accountNumber');
-    const ifscCode = form.getValues('ifscCode');
-
-    setIsVerifying(true);
-    setBankVerificationStatus('idle');
-    setVerificationMessage('');
+    const account = form.getValues('bankAccounts')[index];
+    setVerifyingAccountIndex(index);
 
     const { success, message, beneficiaryName, error } =
-      await handlePennyDropVerification(accountNumber, ifscCode);
+      await handlePennyDropVerification(account.accountNumber, account.ifscCode);
 
-    setIsVerifying(false);
+    setVerifyingAccountIndex(null);
 
     if (error) {
-      setBankVerificationStatus('failed');
-      setVerificationMessage(error);
-       toast({
+      form.setValue(`bankAccounts.${index}.verificationStatus`, 'failed');
+      toast({
         variant: 'destructive',
         title: 'Verification Error',
         description: error,
       });
       return;
     }
-    
-    setVerificationMessage(message);
+
     if (success) {
-      setBankVerificationStatus('success');
-      form.setValue('beneficiaryName', beneficiaryName, { shouldValidate: true });
-       toast({
+      form.setValue(`bankAccounts.${index}.verificationStatus`, 'success');
+      form.setValue(`bankAccounts.${index}.beneficiaryName`, beneficiaryName, {
+        shouldValidate: true,
+      });
+      toast({
         title: 'Verification Successful',
         description: message,
-        className: 'bg-accent text-accent-foreground border-accent',
+        className: 'bg-green-100 text-green-900 border-green-200',
       });
     } else {
-      setBankVerificationStatus('failed');
-      form.setValue('beneficiaryName', '');
+      form.setValue(`bankAccounts.${index}.verificationStatus`, 'failed');
+      form.setValue(`bankAccounts.${index}.beneficiaryName`, '');
       toast({
         variant: 'destructive',
         title: 'Verification Failed',
@@ -369,18 +384,22 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
   };
 
   const onSubmit = async (values: VendorFormValues) => {
-     if (bankVerificationStatus === 'failed' && !values.cancelledCheque) {
+    const hasFailedVerification = values.bankAccounts.some(
+      (acc) => acc.verificationStatus === 'failed'
+    );
+
+    if (hasFailedVerification && !values.cancelledCheque) {
       toast({
         variant: 'destructive',
         title: 'Missing Document',
-        description: 'Bank verification failed. Please upload a cancelled cheque copy to proceed.',
+        description:
+          'At least one bank verification failed. Please upload a cancelled cheque copy to proceed.',
       });
-      setCurrentStep(steps.findIndex(step => step.id === 'Document Upload'));
+      setCurrentStep(steps.findIndex((step) => step.id === 'Document Upload'));
       return;
     }
-    
+
     setIsSubmitting(true);
-    // In a real app, you would handle file uploads and send data to your backend.
     console.log(values);
 
     await new Promise((resolve) => setTimeout(resolve, 2000));
@@ -389,15 +408,15 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
     toast({
       title: 'Form Submitted Successfully!',
       description: 'Vendor empanelment is now pending approval.',
-      className: 'bg-accent text-accent-foreground border-accent',
+      className: 'bg-green-100 text-green-900 border-green-200',
     });
     form.reset();
     setCurrentStep(0);
   };
-  
+
   const handleNext = async () => {
     const fields = steps[currentStep].fields;
-    const output = await form.trigger(fields as (keyof VendorFormValues)[], {
+    const output = await form.trigger(fields as any, {
       shouldFocus: true,
     });
 
@@ -410,36 +429,61 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
 
   const handlePrevious = () => {
     if (currentStep > 0) {
-      setCurrentStep((step) => step - 1);
+      setCurrentStep((step) => step + 1);
     }
   };
+
+  const hasFailedBankVerification = form
+    .watch('bankAccounts')
+    .some((acc) => acc.verificationStatus === 'failed');
 
   return (
     <Form {...form}>
       <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
         <div className="flex items-center">
-            {steps.map((step, index) => (
-                <React.Fragment key={step.id}>
-                    <div className="flex flex-col items-center text-center" style={{ minWidth: '120px' }}>
-                        <div
-                            className={cn(
-                                "flex h-12 w-12 items-center justify-center rounded-full border-2 font-bold transition-all",
-                                currentStep > index ? "border-primary bg-primary text-primary-foreground" :
-                                currentStep === index ? "border-primary text-primary" : "border-border text-muted-foreground",
-                            )}
-                        >
-                            {currentStep > index ? <Check className="h-6 w-6" /> : <step.icon className="h-6 w-6" />}
-                        </div>
-                        <p className={cn(
-                            "mt-2 text-xs font-semibold sm:text-sm",
-                            currentStep >= index ? "text-foreground" : "text-muted-foreground"
-                        )}>{step.id}</p>
-                    </div>
-                    {index < steps.length - 1 && (
-                        <div className={cn("flex-1 border-t-2 mx-4 transition-all", currentStep > index ? "border-primary" : "border-border")} />
-                    )}
-                </React.Fragment>
-            ))}
+          {steps.map((step, index) => (
+            <React.Fragment key={step.id}>
+              <div
+                className="flex flex-col items-center text-center"
+                style={{ minWidth: '120px' }}
+              >
+                <div
+                  className={cn(
+                    'flex h-12 w-12 items-center justify-center rounded-full border-2 font-bold transition-all',
+                    currentStep > index
+                      ? 'border-primary bg-primary text-primary-foreground'
+                      : currentStep === index
+                      ? 'border-primary text-primary'
+                      : 'border-border text-muted-foreground'
+                  )}
+                >
+                  {currentStep > index ? (
+                    <Check className="h-6 w-6" />
+                  ) : (
+                    <step.icon className="h-6 w-6" />
+                  )}
+                </div>
+                <p
+                  className={cn(
+                    'mt-2 text-xs font-semibold sm:text-sm',
+                    currentStep >= index
+                      ? 'text-foreground'
+                      : 'text-muted-foreground'
+                  )}
+                >
+                  {step.id}
+                </p>
+              </div>
+              {index < steps.length - 1 && (
+                <div
+                  className={cn(
+                    'flex-1 border-t-2 mx-4 transition-all',
+                    currentStep > index ? 'border-primary' : 'border-border'
+                  )}
+                />
+              )}
+            </React.Fragment>
+          ))}
         </div>
 
         {currentStep === 0 && (
@@ -462,7 +506,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                     <FormItem>
                       <FormLabel>Vendor Code</FormLabel>
                       <FormControl>
-                        <Input placeholder="Vendor Code" {...field} readOnly />
+                        <Input placeholder="Vendor Code" {...field} readOnly className="bg-gray-100"/>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -509,6 +553,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                           placeholder="Your business name"
                           {...field}
                           readOnly={isNewSiteFlow}
+                          className={isNewSiteFlow ? 'bg-gray-100' : ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -526,6 +571,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                           placeholder="Prefilled by AI"
                           readOnly
                           {...field}
+                          className="bg-gray-100"
                         />
                       </FormControl>
                       <FormMessage />
@@ -543,6 +589,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                           placeholder="Prefilled by AI"
                           readOnly
                           {...field}
+                          className="bg-gray-100"
                         />
                       </FormControl>
                       <FormMessage />
@@ -560,6 +607,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                           placeholder="Prefilled by AI"
                           readOnly
                           {...field}
+                           className="bg-gray-100"
                         />
                       </FormControl>
                       <FormMessage />
@@ -571,7 +619,7 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                   control={form.control}
                   name="panLinkedWithAadhar"
                   render={({ field }) => (
-                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-lg border p-4">
                       <FormControl>
                         <Checkbox
                           checked={field.value}
@@ -914,175 +962,210 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
                 Bank Details
               </CardTitle>
               <CardDescription>
-                Provide and verify your bank account details for payments.
+                Provide and verify bank account details for payments. You can add multiple accounts.
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="space-y-4 rounded-md border p-4">
-                <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                  <FormField
-                    control={form.control}
-                    name="accountNumber"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Account Number</FormLabel>
-                        <FormControl>
-                          <Input
-                            placeholder="Enter your account number"
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
+              <div className="space-y-4">
+                {bankAccountFields.map((field, index) => {
+                   const verificationStatus = form.watch(`bankAccounts.${index}.verificationStatus`);
+                  return (
+                  <div key={field.id} className="space-y-4 rounded-lg border p-4 relative">
+                     {bankAccountFields.length > 1 && (
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="icon"
+                        className="absolute top-2 right-2 text-destructive hover:bg-destructive/10"
+                        onClick={() => removeBankAccount(index)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
                     )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="ifscCode"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>IFSC Code</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g. SBIN0001234" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <Button
-                  type="button"
-                  onClick={onVerifyBankAccount}
-                  disabled={isVerifying}
-                  className="w-full sm:w-auto"
-                >
-                  {isVerifying ? (
-                    <LoaderCircle className="animate-spin" />
-                  ) : (
-                    <Banknote />
-                  )}
-                  Verify Account
-                </Button>
-                {bankVerificationStatus !== 'idle' && (
-                   <Alert
-                    variant={
-                      bankVerificationStatus === 'success'
-                        ? 'default'
-                        : 'destructive'
-                    }
-                    className={cn(
-                      bankVerificationStatus === 'success' &&
-                        'border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-300 [&>svg]:text-green-600'
-                    )}
-                  >
-                    {bankVerificationStatus === 'success' ? (
-                      <ShieldCheck />
-                    ) : (
-                      <ShieldAlert />
-                    )}
-                    <AlertTitle>
-                      {bankVerificationStatus === 'success'
-                        ? 'Verification Successful'
-                        : 'Verification Failed'}
-                    </AlertTitle>
-                    <AlertDescription>{verificationMessage}</AlertDescription>
-                  </Alert>
-                )}
-              </div>
-              
-              <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
-                <FormField
-                  control={form.control}
-                  name="beneficiaryName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Beneficiary Name (as per bank)</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Verified account holder name"
-                          {...field}
-                          readOnly
-                          className="bg-muted"
+                    <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.accountNumber`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Account Number</FormLabel>
+                                <FormControl>
+                                <Input
+                                    placeholder="Enter your account number"
+                                    {...field}
+                                />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
                         />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="bankName"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Bank Name</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g. State Bank of India" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="branchName"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Branch Name</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g. Main Branch, Delhi" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="crn"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>CRN (Optional)</FormLabel>
-                        <FormControl>
-                        <Input placeholder="Customer Relationship Number" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-              </div>
-               <FormField
-                  control={form.control}
-                  name="accountType"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Type of Account</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col space-y-1"
+                        <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.ifscCode`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>IFSC Code</FormLabel>
+                                <FormControl>
+                                <Input placeholder="e.g. SBIN0001234" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                     <Button
+                        type="button"
+                        onClick={() => onVerifyBankAccount(index)}
+                        disabled={verifyingAccountIndex === index}
+                        className="w-full sm:w-auto"
                         >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
+                        {verifyingAccountIndex === index ? (
+                            <LoaderCircle className="animate-spin" />
+                        ) : (
+                            <Banknote />
+                        )}
+                        Verify Account
+                        </Button>
+                     {verificationStatus !== 'idle' && (
+                        <Alert
+                            variant={
+                            verificationStatus === 'success'
+                                ? 'default'
+                                : 'destructive'
+                            }
+                             className={cn(
+                                verificationStatus === 'success' &&
+                                'border-green-300 bg-green-50 text-green-900 dark:border-green-800 dark:bg-green-950 dark:text-green-300 [&>svg]:text-green-600'
+                            )}
+                        >
+                            {verificationStatus === 'success' ? (
+                            <ShieldCheck />
+                            ) : (
+                            <ShieldAlert />
+                            )}
+                            <AlertTitle>
+                            {verificationStatus === 'success'
+                                ? 'Verification Successful'
+                                : 'Verification Failed'}
+                            </AlertTitle>
+                            <AlertDescription>
+                                {form.watch(`bankAccounts.${index}.beneficiaryName`) || (verificationStatus === 'failed' ? 'Account details could not be verified.' : '')}
+                            </AlertDescription>
+                        </Alert>
+                    )}
+                    <Separator />
+                     <div className="grid grid-cols-1 gap-6 md:grid-cols-2">
+                        <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.beneficiaryName`}
+                            render={({ field }) => (
+                                <FormItem>
+                                <FormLabel>Beneficiary Name (as per bank)</FormLabel>
+                                <FormControl>
+                                    <Input
+                                    placeholder="Verified account holder name"
+                                    {...field}
+                                    readOnly
+                                    className="bg-gray-100"
+                                    />
+                                </FormControl>
+                                <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.bankName`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Bank Name</FormLabel>
+                                <FormControl>
+                                <Input placeholder="e.g. State Bank of India" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.branchName`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Branch Name</FormLabel>
+                                <FormControl>
+                                <Input placeholder="e.g. Main Branch, Delhi" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                         <FormField
+                            control={form.control}
+                            name={`bankAccounts.${index}.crn`}
+                            render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>CRN (Optional)</FormLabel>
+                                <FormControl>
+                                <Input placeholder="Customer Relationship Number" {...field} />
+                                </FormControl>
+                                <FormMessage />
+                            </FormItem>
+                            )}
+                        />
+                    </div>
+                     <FormField
+                        control={form.control}
+                        name={`bankAccounts.${index}.accountType`}
+                        render={({ field }) => (
+                            <FormItem className="space-y-3">
+                            <FormLabel>Type of Account</FormLabel>
                             <FormControl>
-                              <RadioGroupItem value="savings" />
+                                <RadioGroup
+                                onValueChange={field.onChange}
+                                defaultValue={field.value}
+                                className="flex flex-row space-x-4"
+                                >
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="savings" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                    Savings
+                                    </FormLabel>
+                                </FormItem>
+                                <FormItem className="flex items-center space-x-3 space-y-0">
+                                    <FormControl>
+                                    <RadioGroupItem value="current" />
+                                    </FormControl>
+                                    <FormLabel className="font-normal">
+                                    Current
+                                    </FormLabel>
+                                </FormItem>
+                                </RadioGroup>
                             </FormControl>
-                            <FormLabel className="font-normal">
-                              Savings
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="current" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              Current
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                        />
+                  </div>
+                )})}
+              </div>
+               <Button
+                type="button"
+                variant="outline"
+                onClick={() => appendBankAccount({
+                    bankName: '',
+                    branchName: '',
+                    accountNumber: '',
+                    ifscCode: '',
+                    accountType: 'current',
+                    beneficiaryName: '',
+                    verificationStatus: 'idle',
+                })}
+                >
+                <PlusCircle className="mr-2" />
+                Add Another Bank Account
+              </Button>
             </CardContent>
           </Card>
         )}
@@ -1364,17 +1447,15 @@ export function VendorForm({ vendorId }: { vendorId?: string }) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {bankVerificationStatus !== 'success' && (
+              {hasFailedBankVerification && (
                 <div className="relative">
                   <DocumentUploadItem
                     field={form.control.register('cancelledCheque')}
                     label="Cancelled Cheque Copy"
                   />
-                  {bankVerificationStatus === 'failed' && (
-                    <Badge variant="destructive" className="absolute -top-2 -right-2">Required</Badge>
-                  )}
+                  <Badge variant="destructive" className="absolute -top-2 -right-2">Required</Badge>
                    <FormDescription className="pt-2">
-                    A cancelled cheque is required because bank account verification failed.
+                    A cancelled cheque is required because at least one bank account verification failed.
                   </FormDescription>
                 </div>
               )}
